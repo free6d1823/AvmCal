@@ -2,10 +2,10 @@
 *.d
 
 # Compiled Object files
-*.slo
+*.yuv
 *.lo
 *.o
-*.obj
+*.png
 
 # Precompiled Headers
 *.gch
