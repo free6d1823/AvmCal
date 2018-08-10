@@ -1,0 +1,62 @@
+#ifndef FECPARAM_H
+#define FECPARAM_H
+
+/**
+ * \struct _FecParam
+ * \brief FEC processing parameters.
+ */
+/*!< feature points area, at least one camera use one FP_AREA */
+#define MAX_FP_AREA	4
+/*!< numbersof FP per area*/
+#define FP_COUNTS			4
+
+
+typedef struct _dbSIZE {
+    double cx;
+    double cy;
+}dbSIZE;
+typedef struct _dbPOINT {
+    double x;
+    double y;
+}dbPOINT;
+typedef struct _dbRECT {
+    double l;
+    double t; //top
+    double r;
+    double b; //bottom
+}dbRECT;
+
+/*!<Fisheye Correction parametters*/
+typedef struct _FecParam{
+	dbRECT	rcInput;		/*!<input area of original image in pixels*/
+	dbPOINT ptCenter;		/*!<symmetry center of image relative to top-left of rcInput, in pixels*/
+	dbSIZE	szRadius;		/*!<radius of fisheye lens, relative to top-left of rcInput, in pixels */
+	double	pitch;			/*!<pitch angle in radiun */
+	double	yaw;			/*!<rotate with respect to y-axis */
+	double	roll;			/*!<rotate with respect to z-axis */
+	double	k1;             /*!<radical coefficient 1 */
+	double	k2;             /*!<radical coefficient 2 */
+	double	fov;			/*!<hoizontal FOV factor, 0 to PI*/
+	double a;				/*!<intrinsic arameters, x- scale factor */
+	double b;				/*!<intrinsic arameters, y- scale factor */
+	double c; 				/*!<intrinsic arameters, skew  */
+	dbSIZE	szOutput;		/*!<desired output image size  in pixels*/
+
+}FecParam;
+
+/*!<Homograph Transformation parametters*/
+typedef struct _HomoParam{
+	dbPOINT fpt[FP_COUNTS]; /*!<feature points are premeaseured based on a 1.0x1.0  site*/
+    dbPOINT fps[FP_COUNTS]; /*!<feature points on rectified image*/
+    double h[3][3];         /*!<Homography Matrix coef. of the region */
+    dbRECT	range;          /*!<the coordinates on final image of this region  */   
+}HomoParam;
+
+
+typedef struct _AreaSettings {    
+    FecParam fec;                   /*!<FEC applied to all area */
+    HomoParam homo[MAX_FP_AREA];    /*!<homo apply to selected region */
+    dbRECT  range;                  /*!<the coordinates on final image of this area  */ 
+}AreaSettings; 
+
+#endif // FECPARAM_H

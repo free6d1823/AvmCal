@@ -1,5 +1,12 @@
 #include "floor.h"
 
+/* exclude these lines when merge to floo.cpp of navm  */
+#define IN_AVMCAL
+#ifdef IN_AVMCAL
+#include "ImgProcess.h"
+extern ImgProcess* gpImgProcess[MAX_CAMERAS];
+#endif //IN_AVMCAL
+/* exclude these lines when merge to floo.cpp of navm  */
 
 
 
@@ -126,18 +133,13 @@ bool Floor::initShaders()
 bool Floor::initTextures()
 {
 
-//    m_pImage = new QImage(m_pData, 1024, 1024, QImage::Format_RGBA8888);
-
-    // Load cube.png image
-//    m_texture = new QOpenGLTexture(QImage(":/Camera4.png"));
-//    unsigned char * pData = m_pVs->GetFrameData();
-//    if (!pData)
-//        return false;
-    int width = 2560;
-    int height = 2048;
+    int width;
+    int height;
+#ifdef IN_AVMCAL
+    width = 2560;
+    height = 2048;
     if (!m_pData) {
             m_pData = (unsigned char*) malloc(width*height*4);
-//            FILE* fp = fopen("/home/cj/workspace/AvmCal/camera1800x1440.yuv", "rb");
             FILE* fp = fopen("/home/cj/workspace/AvmCal/camerain.yuv", "rb");
             void* pSrc = malloc(width*2*height);
             fread(pSrc, height, width*2, fp);
@@ -145,6 +147,11 @@ bool Floor::initTextures()
             YuyvToRgb32((unsigned char*) pSrc, width, height, m_pData);
             free(pSrc);
     }
+#else
+    m_pData = m_pVs->GetFrameData();
+    width = m_pVs->Width();
+    height = m_pVs->Height();
+#endif
     m_texture = new QOpenGLTexture(QImage(m_pData, width,
                 height, QImage::Format_RGBA8888).mirrored());
 
@@ -174,9 +181,9 @@ void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
         for (j=0; j<=MAX_GRIDES; j++) {
             vert.push_back(QVector3D(j*diff*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-i*diff*TZ_SCALEUP));
             uvs.push_back(QVector2D(j*diff, i*diff));
-//            printf ("(%f, 0,%f) -(%f, %f)\n", j*diff*TX_SCALEUP-TX_CENTER, TZ_CENTER-i*diff*TZ_SCALEUP, j*diff, i*diff);
         }
     }
+
     int k;
     for (i=0; i< MAX_GRIDES; i++) {
         k = i*(MAX_GRIDES+1);
@@ -191,18 +198,13 @@ void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
             k++;
         }
     }
-
-    /*
-    vert.push_back(QVector3D(-10, 0, 10));
-    vert.push_back(QVector3D(10, 0, 10));
-    vert.push_back(QVector3D(-10, 0, -10));
-    vert.push_back(QVector3D(10, 0, -10));
-    uvs.push_back(QVector2D(0.0f, 0.0f));
-    uvs.push_back(QVector2D(1.0f, 0.0f));
-    uvs.push_back(QVector2D(0.0f, 1.0f));
-    uvs.push_back(QVector2D(1.0f, 1.0f));
-*/
-
+#ifdef IN_AVMCAL
+    uvs.clear();
+    for (i=0;i<4;i++)
+    {
+        gpImgProcess[i]->updateUv(uvs);
+    }
+#endif //IN_AVMCAL
 }
 
 void Floor::init()
@@ -238,6 +240,7 @@ void Floor::init()
  */
 void Floor::update(QMatrix4x4& pojection, QMatrix4x4& view, QVector3D& light)
 {
+    (void)light;
     m_matProjection = pojection*view;
 }
 
@@ -245,11 +248,14 @@ void Floor::update(QMatrix4x4& pojection, QMatrix4x4& view, QVector3D& light)
 void Floor::draw(bool bReload )
 {
     if (bReload) {
-//        unsigned char * pData = m_pVs->GetFrameData();
-//        m_texture->destroy();
-//        m_texture->create();
-//        m_texture->setData(QImage(pData, m_pVs->Width(),
- //                     m_pVs->Height(), QImage::Format_RGBA8888).mirrored());
+#ifdef IN_AVMCAL
+#else
+        unsigned char * pData = m_pVs->GetFrameData();
+        m_texture->destroy();
+        m_texture->create();
+        m_texture->setData(QImage(pData, m_pVs->Width(),
+        m_pVs->Height(), QImage::Format_RGBA8888).mirrored());
+#endif
     }
     m_program.bind();
 

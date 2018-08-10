@@ -25,11 +25,18 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp\
         mainwidget.cpp \
-    floor.cpp
+    floor.cpp \
+    ImgProcess.cpp \
+    sxmlc/sxmlsearch.c \
+    sxmlc/sxmlc.c
 
 HEADERS  += mainwidget.h \
     floor.h \
-    basicobject.h
+    basicobject.h \
+    ImgProcess.h \
+    FecParam.h \
+    sxmlc/sxmlsearch.h \
+    sxmlc/sxmlc.h
 
 DISTFILES +=
 

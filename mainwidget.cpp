@@ -1,13 +1,17 @@
 #include "mainwidget.h"
 #include <QMouseEvent>
 #include "floor.h"
+#include "ImgProcess.h"
 
 Floor* m_pFloor = NULL;
+ImgProcess* gpImgProcess[MAX_CAMERAS]={0};
 
 MainWidget::MainWidget(QWidget *parent)
     : QOpenGLWidget(parent)
 {
     m_pFloor = NULL;
+    for (int i=0; i< MAX_CAMERAS; i++)
+        gpImgProcess[i] = new ImgProcess(i);
 }
 
 MainWidget::~MainWidget()
@@ -16,6 +20,11 @@ MainWidget::~MainWidget()
     if (m_pFloor)
         delete m_pFloor;
     doneCurrent();
+    for (int i=0; i< MAX_CAMERAS; i++){
+        if(gpImgProcess[i]) delete gpImgProcess[i];
+        gpImgProcess[i] = NULL;
+    }
+
 }
 void MainWidget::InitViewMode()
 {
@@ -61,10 +70,12 @@ void MainWidget::keyPressEvent(QKeyEvent *ev)
 }
 void MainWidget::mousePressEvent(QMouseEvent *e)
 {
+    (void)e;
 }
 
 void MainWidget::mouseReleaseEvent(QMouseEvent *e)
 {
+    (void)e;
 }
 void MainWidget::initializeGL()
 {
@@ -83,6 +94,8 @@ void MainWidget::initializeGL()
 }
 void MainWidget::resizeGL(int w, int h)
 {
+    (void)w;
+    (void)h;
     InitViewMode();
 }
 void MainWidget::paintGL()
