@@ -27,16 +27,16 @@ SOURCES += main.cpp\
         mainwidget.cpp \
     floor.cpp \
     ImgProcess.cpp \
-    sxmlc/sxmlsearch.c \
-    sxmlc/sxmlc.c
+    iniparser/iniparser.c \
+    iniparser/dictionary.c
 
 HEADERS  += mainwidget.h \
     floor.h \
     basicobject.h \
     ImgProcess.h \
     FecParam.h \
-    sxmlc/sxmlsearch.h \
-    sxmlc/sxmlc.h
+    iniparser/iniparser.h \
+    iniparser/dictionary.h
 
 DISTFILES +=
 
