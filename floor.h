@@ -35,6 +35,7 @@ protected:
     bool initTextures();
 
 private:
+    int m_nDrawNum;
     QOpenGLBuffer m_arrayVerBuf;
     QOpenGLBuffer m_arrayTexBuf;
     QOpenGLBuffer m_indexBuf;
