@@ -27,16 +27,14 @@ SOURCES += main.cpp\
         mainwidget.cpp \
     floor.cpp \
     ImgProcess.cpp \
-    iniparser/iniparser.c \
-    iniparser/dictionary.c
+    inifile/inifile.cpp
 
 HEADERS  += mainwidget.h \
     floor.h \
     basicobject.h \
     ImgProcess.h \
     FecParam.h \
-    iniparser/iniparser.h \
-    iniparser/dictionary.h
+    inifile/inifile.h
 
 DISTFILES +=
 
