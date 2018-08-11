@@ -1,5 +1,5 @@
 #include "floor.h"
-
+#include <QFile>
 /* exclude these lines when merge to floo.cpp of navm  */
 #define IN_AVMCAL
 #ifdef IN_AVMCAL
@@ -136,14 +136,17 @@ bool Floor::initTextures()
     int width;
     int height;
 #ifdef IN_AVMCAL
-    width = 2560;
-    height = 2048;
+    width = 1800;
+    height = 1440;
     if (!m_pData) {
             m_pData = (unsigned char*) malloc(width*height*4);
-            FILE* fp = fopen("/home/cj/workspace/AvmCal/camerain.yuv", "rb");
-            void* pSrc = malloc(width*2*height);
-            fread(pSrc, height, width*2, fp);
-            fclose(fp);
+            QFile fp(":/camera1800x1440.yuv");
+            if(!fp.open(QIODevice::ReadOnly))
+                    return false;
+
+            char* pSrc = (char*) malloc(width*2*height);
+            fp.read(pSrc, height*width*2);
+            fp.close();
             YuyvToRgb32((unsigned char*) pSrc, width, height, m_pData);
             free(pSrc);
     }
@@ -198,7 +201,7 @@ void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
             k++;
         }
     }
-#ifdef IN_AVMCAL
+#ifdef xIN_AVMCAL
     uvs.clear();
     for (i=0;i<4;i++)
     {
