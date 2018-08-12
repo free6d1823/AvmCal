@@ -27,17 +27,22 @@ SOURCES += main.cpp\
         mainwidget.cpp \
     floor.cpp \
     ImgProcess.cpp \
-    inifile/inifile.cpp
+    inifile/inifile.cpp \
+    fecwin.cpp
 
 HEADERS  += mainwidget.h \
     floor.h \
     basicobject.h \
     ImgProcess.h \
     FecParam.h \
-    inifile/inifile.h
+    inifile/inifile.h \
+    fecwin.h
 
 DISTFILES +=
 
 RESOURCES += \
     shaders.qrc \
     textures.qrc
+
+FORMS += \
+    fecwin.ui

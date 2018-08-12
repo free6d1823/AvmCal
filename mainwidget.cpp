@@ -62,6 +62,9 @@ void MainWidget::keyPressEvent(QKeyEvent *ev)
         bUpdate = true;
 
         break;
+    case Qt::Key_F:
+        onShowFecDialog();
+        break;
     default:
         break;
     }
@@ -106,4 +109,11 @@ void MainWidget::paintGL()
     QVector3D light = QVector3D(0,0,0);
     m_pFloor->update(m_matProj, view, light);
     m_pFloor->draw(false);
+}
+#include "fecwin.h"
+void MainWidget::onShowFecDialog()
+{
+    FecWin* pDlg = new FecWin;
+    pDlg->show();
+
 }
