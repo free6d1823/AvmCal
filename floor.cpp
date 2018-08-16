@@ -23,17 +23,20 @@ extern ImgProcess* gpImgProcess[MAX_CAMERAS];
 #define YUV2B(Y, U, V) CLIP(( 298 * C(Y) + 516 * D(U)              + 128) >> 8)
 
 
-void YuyvToRgb32(unsigned char* pYuv, int width, int height, unsigned char* pRgb)
+void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst)
 {
     //YVYU - format
     int nBps = width*4;
     unsigned char* pY1 = pYuv;
 
-//    unsigned char* pV = pY1+1;
-//    unsigned char* pU = pV + 2;
+    unsigned char* pV;
+    unsigned char* pU;
 
-    unsigned char* pU = pY1+1;
-    unsigned char* pV = pU + 2;
+    if (uFirst) {
+        pU = pY1+1; pV = pU+2;
+    } else {
+        pV = pY1+1; pU = pV+2;
+    }
 
 
     unsigned char* pLine1 = pRgb;
@@ -57,9 +60,9 @@ void YuyvToRgb32(unsigned char* pYuv, int width, int height, unsigned char* pRgb
             pLine1[j*4+6] = YUV2R(y1, u, v);//r
             pLine1[j*4+7] = 0xff;
         }
-        pY1 += width*2;
-        pV += width*2;
-        pU += width*2;
+        pY1 += stride;
+        pV += stride;
+        pU += stride;
         pLine1 += nBps;
 
     }
@@ -147,7 +150,7 @@ bool Floor::initTextures()
             char* pSrc = (char*) malloc(width*2*height);
             fp.read(pSrc, height*width*2);
             fp.close();
-            YuyvToRgb32((unsigned char*) pSrc, width, height, m_pData);
+            YuyvToRgb32((unsigned char*) pSrc, width, width*2, height, m_pData, true);
             free(pSrc);
     }
 #else
@@ -156,7 +159,7 @@ bool Floor::initTextures()
     height = m_pVs->Height();
 #endif
     m_texture = new QOpenGLTexture(QImage(m_pData, width,
-                height, QImage::Format_RGBA8888).mirrored());
+                height, QImage::Format_RGBA8888) );
 
     // Set nearest filtering mode for texture minification
     m_texture->setMinificationFilter(QOpenGLTexture::Nearest);

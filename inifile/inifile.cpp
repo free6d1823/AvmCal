@@ -388,6 +388,36 @@ bool GetProfileArrayDouble(const char * lpSecName, const char * lpKeyName,   dou
     }
     return bResult;
 }
+bool WriteProfileArrayInt(const char * lpSecName, const char * lpKeyName,  int* pValue, int nElements, const char * lpFileName)
+{
+    char szString[64];
+    char szArray[512];
+    for (int i=0; i< nElements; i++) {
+        sprintf(szString, " %d,", pValue[i]);
+        strcat(szArray, szString);
+    }
+    return WriteProfileString(lpSecName, lpKeyName, szArray, lpFileName);
+}
+
+bool GetProfileArrayInt(const char * lpSecName, const char * lpKeyName,   int* pValue, int nElements,  const char * lpFileName)
+{
+    char value[512];
+    if( false == GetProfileString(lpSecName, lpKeyName, value, sizeof(value), "0", lpFileName))
+        return false;
+    char* p1 = strtok(value, ",");
+    bool bResult = true;
+    for(int i=0; i<nElements; i++) {
+        if (p1 == NULL) {
+            bResult = false;
+            break;
+        }
+        pValue[i] = atoi(p1);
+        p1 = strtok(NULL, ",");
+    }
+    return bResult;
+}
+
+
 bool	WriteProfileRectDouble(const char * lpSecName, const char * lpKeyName,  dbRECT* pRect, const char * lpFileName)
 {
     char szString[512];

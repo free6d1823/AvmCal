@@ -10,8 +10,8 @@ class ImgProcess
 public:
     ImgProcess(int id);
     ~ImgProcess();
-    bool LoadSettings(const char* path);
-    bool SaveSettings(const char* path);
+    bool LoadSettings( );
+    bool SaveSettings( );
     int updateUv(vector <QVector2D> &uv);
 private:
     int m_nId; /*!<Area ID,0~4, where 0 is front view */

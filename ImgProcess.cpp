@@ -1,6 +1,5 @@
 #include "ImgProcess.h"
-#define PROFILE_NAME    "/home/cj/workspace/avmsettings.ini"
-#include "./inifile/inifile.h"
+#include "FecParam.h"
 
 AreaSettings    m_as[MAX_CAMERAS] = {
 
@@ -8,27 +7,29 @@ AreaSettings    m_as[MAX_CAMERAS] = {
 ImgProcess::ImgProcess(int id): m_nId(id)
 {
 
-    LoadSettings(PROFILE_NAME);
+    LoadSettings();
 }
 ImgProcess::~ImgProcess()
 {
-    SaveSettings(PROFILE_NAME);
+    SaveSettings();
 }
-bool ImgProcess::LoadSettings(const char* path)
+bool ImgProcess::LoadSettings()
 {
-    char key[32];
-    char data[256];
-
-    GetProfileString("system", "max_cam", data, sizeof(data), "", path);
-    printf("--%s \n", data);
+    for(int i=0; i<MAX_CAMERAS; i++){
+        if (!LoadAreaSettings(&m_as[i], i))
+            return false;
+    }
 
     return true;
 }
 
-bool ImgProcess::SaveSettings(const char* path)
+bool ImgProcess::SaveSettings( )
 {
 
-    WriteProfileString("system", "max_cam", "4", path);
+    for(int i=0; i<MAX_CAMERAS; i++){
+        if (!SaveAreaSettings(&m_as[i], i))
+            return false;
+    }
 
 
     return true;

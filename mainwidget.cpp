@@ -114,6 +114,6 @@ void MainWidget::paintGL()
 void MainWidget::onShowFecDialog()
 {
     FecWin* pDlg = new FecWin;
-    pDlg->show();
+    pDlg->exec();
 
 }

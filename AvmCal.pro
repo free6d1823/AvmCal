@@ -28,7 +28,11 @@ SOURCES += main.cpp\
     floor.cpp \
     ImgProcess.cpp \
     inifile/inifile.cpp \
-    fecwin.cpp
+    fecwin.cpp \
+    imgview.cpp \
+    fecparam.cpp \
+    homowin.cpp \
+    homoview.cpp
 
 HEADERS  += mainwidget.h \
     floor.h \
@@ -36,7 +40,10 @@ HEADERS  += mainwidget.h \
     ImgProcess.h \
     FecParam.h \
     inifile/inifile.h \
-    fecwin.h
+    fecwin.h \
+    imgview.h \
+    homowin.h \
+    homoview.h
 
 DISTFILES +=
 
@@ -45,4 +52,5 @@ RESOURCES += \
     textures.qrc
 
 FORMS += \
-    fecwin.ui
+    fecwin.ui \
+    homowin.ui

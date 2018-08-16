@@ -34,6 +34,8 @@ bool WriteProfileArrayDouble(const char * lpSecName, const char * lpKeyName,  do
 bool GetProfileArrayDouble(const char * lpSecName, const char * lpKeyName,   double* pValue, int nElements,  const char * lpFileName);
 bool	WriteProfileRectDouble(const char * lpSecName, const char * lpKeyName,  dbRECT* pRect, const char * lpFileName);
 bool GetProfileRectDouble(const char * lpSecName, const char * lpKeyName,  dbRECT* pRect, const char * lpFileName);
+bool WriteProfileArrayInt(const char * lpSecName, const char * lpKeyName,  int* pValue, int nElements, const char * lpFileName);
+bool GetProfileArrayInt(const char * lpSecName, const char * lpKeyName,   int* pValue, int nElements,  const char * lpFileName);
 
 
 
