@@ -1,42 +1,94 @@
 #include "homoview.h"
 #include <QPainter>
+#include "fecwin.h"
+#include "./imglab/ImgProcess.h"
 
-HomoView::HomoView(QWidget *parent) : QWidget(parent)
+#define OUT_WIDTH   1000
+#define OUT_HEIGHT  1000
+#define OUT_STRIDE  (1000*4)
+
+HomoView::HomoView(HomoWin *parent) : QWidget((QWidget*)parent)
 {
+    m_pOwner = parent;
     m_bDrawRuler = true;
     for (int i=0; i< FP_COUNTS; i++) {
         m_fp[i] = QPointF(0,0);
     }
-    m_pImgData = NULL;
+    m_pImgData = (unsigned char*)malloc(OUT_STRIDE*OUT_HEIGHT);
+    if(!m_pImgData){
+        perror("HomoView error: Out of memory!!\n");
+    }
+    memset(m_pImgData, 0, OUT_STRIDE*OUT_HEIGHT);
      m_width = m_height = 0;
 }
 HomoView::~HomoView()
 {
     if (m_pImgData) {
         delete m_pImgData;
-        m_pImgData = NULL;
     }
 }
 
-void HomoView::setImageRGB32(unsigned char* pRgb, int width, int stride, int height)
+void HomoView::HomoTransform()
 {
-    if (m_width != width || m_height != height){
-        if (m_pImgData) {
-            free (m_pImgData);
-        }
-        m_width = width;
-        m_height = height;
-        m_stride = m_width*4;
-        m_pImgData = (unsigned char*) malloc(m_stride*height);
+    //temp
+    unsigned char* pSrc= m_pImgRef;
+    unsigned char* pTar= m_pImgData;
+    int line = OUT_STRIDE;
+    if (m_stride<OUT_STRIDE) line = m_stride;
+    int height = OUT_HEIGHT;
+    if (height > m_height)height = m_height;
+    for (int i=0; i<height; i++){
+        memcpy(pTar, pSrc, line);
+        pSrc += m_stride;
+        pTar += OUT_STRIDE;
     }
-    unsigned char* pSrc = pRgb;
-    unsigned char* pTar = m_pImgData;
+}
+void HomoView::setImageRGB32(unsigned char* pRgb, int width, int stride, int height, int nAreaID)
+{
+    m_width = width;
+    m_height = height;
+    m_stride = stride;
+    m_pImgRef = pRgb;
+    m_nAreaId = nAreaID;
+    //
+    unsigned char* pSrc= m_pImgRef;
+    unsigned char* pTar= m_pImgData;
+    HomoParam* homo = gFecWin->getAreaSettings()->homo;
+    dbRECT* pRegion = gFecWin->getAreaSettings()->region;
 
-    for (int i=0; i<height; i++) {
-        memcpy(pTar, pSrc, m_stride);
-        pSrc += stride;
-        pTar += m_stride;
+    dbRECT region;
+    for(int k=0; k<MAX_FP_AREA; k++){
+        region.l = pRegion[k].l * OUT_WIDTH;
+        region.r = pRegion[k].r * OUT_WIDTH;
+        region.t = pRegion[k].t * OUT_HEIGHT;
+        region.b = pRegion[k].b * OUT_HEIGHT;
+
+        for(int i=region.t;i<region.b; i++) {
+            double t = (double)i/(double)OUT_HEIGHT;
+            for(int j=region.l; j<region.r; j++) {
+                double s = (double)j/(double)OUT_WIDTH; //normalized coordingnates
+                double u,v;
+                if (ImgProcess::doHomoTransform(s,t,u,v, homo[k].h)) {
+                    int x = u * width;
+                    int y = v * height;
+                    int offset = y*stride + x*4;
+                    pTar[i*OUT_STRIDE+j*4]= pSrc[offset];
+                    pTar[i*OUT_STRIDE+j*4+1]= pSrc[offset+1];
+                    pTar[i*OUT_STRIDE+j*4+2]= pSrc[offset+2];
+                    pTar[i*OUT_STRIDE+j*4+3]= pSrc[offset+3];
+
+
+                } else {
+                    pTar[i*OUT_STRIDE+j*4]=pTar[i*OUT_STRIDE+j*4+1]=pTar[i*OUT_STRIDE+j*4+2] = 0;
+                    pTar[i*OUT_STRIDE+j*4+3]=0xff;
+                }
+            }
+        }
+
     }
+
+
+
     update();
 }
 
@@ -44,13 +96,13 @@ void HomoView::paintEvent(QPaintEvent */*event*/)
 {
     QPainter painter(this);
     QRect rcTarget = rect();
-    QRect rcSrc = QRect(0,0,m_width, m_height);
+    QRect rcSrc = QRect(0,0,OUT_WIDTH, OUT_HEIGHT);
     if(m_pImgData){
         QImage image(
                 m_pImgData,
-                m_width,
-                m_height,
-                m_stride,
+                OUT_WIDTH,
+                OUT_HEIGHT,
+                OUT_STRIDE,
                 QImage::Format_RGBA8888);
         painter.drawImage(rcTarget, image, rcSrc);
 
@@ -77,7 +129,7 @@ void HomoView::paintEvent(QPaintEvent */*event*/)
 
 void HomoView::resizeEvent(QResizeEvent */*event*/)
 {
-
+    loadFeaturePoints();
 }
 
 void HomoView::showRuler(bool bShow)
@@ -85,22 +137,20 @@ void HomoView::showRuler(bool bShow)
     m_bDrawRuler = bShow;
     update();
 }
-void HomoView::setFeatureRegions(dbRECT* fp, int num)
+void HomoView::loadFeaturePoints()
 {
     QSize dim = rect().size();
-    for (int i=0; i<num; i++) {
-        m_region[i].setLeft(fp[i].l*dim.width());
-        m_region[i].setRight(fp[i].r*dim.width());
-        m_region[i].setTop(fp[i].t*dim.height());
-        m_region[i].setBottom(fp[i].b*dim.height());
-    }
-}
-
-void HomoView::setFeaturePoints(dbPOINT* fp, int elements)
-{
-    QSize dim = rect().size();
-    for (int i=0; i<elements; i++) {
+    dbPOINT* fp = gFecWin->getAreaSettings()->fpt;
+    for (int i=0; i<FP_COUNTS; i++) {
         m_fp[i].setX(fp[i].x*dim.width());
         m_fp[i].setY(fp[i].y*dim.height());
     }
+    dbRECT* fr = gFecWin->getAreaSettings()->region;
+    for (int i=0; i<MAX_FP_AREA; i++) {
+        m_region[i].setLeft(fr[i].l*dim.width());
+        m_region[i].setRight(fr[i].r*dim.width());
+        m_region[i].setTop(fr[i].t*dim.height());
+        m_region[i].setBottom(fr[i].b*dim.height());
+    }
 }
+

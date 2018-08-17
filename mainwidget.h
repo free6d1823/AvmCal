@@ -29,8 +29,10 @@ protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
-
+    void CreateMenus();
+private slots:
     void onShowFecDialog();
+
 private:
     QMatrix4x4 m_matProj;
     QVector3D m_posCamera;

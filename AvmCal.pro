@@ -26,24 +26,28 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp\
         mainwidget.cpp \
     floor.cpp \
-    ImgProcess.cpp \
     inifile/inifile.cpp \
     fecwin.cpp \
     imgview.cpp \
     fecparam.cpp \
     homowin.cpp \
-    homoview.cpp
+    homoview.cpp \
+    fectooldlg.cpp \
+    imglab/Mat.cpp \
+    imglab/ImgProcess.cpp
 
 HEADERS  += mainwidget.h \
     floor.h \
     basicobject.h \
-    ImgProcess.h \
     FecParam.h \
     inifile/inifile.h \
     fecwin.h \
     imgview.h \
     homowin.h \
-    homoview.h
+    homoview.h \
+    fectooldlg.h \
+    imglab/Mat.h \
+    imglab/ImgProcess.h
 
 DISTFILES +=
 

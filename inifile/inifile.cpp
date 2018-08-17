@@ -364,7 +364,7 @@ bool GetProfilePointDouble(const char * lpSecName, const char * lpKeyName,  dbPO
 bool WriteProfileArrayDouble(const char * lpSecName, const char * lpKeyName,  double* pValue, int nElements, const char * lpFileName)
 {
     char szString[64];
-    char szArray[512];
+    char szArray[512]={0};
     for (int i=0; i< nElements; i++) {
         sprintf(szString, "%10.5f,", pValue[i]);
         strcat(szArray, szString);
@@ -391,7 +391,7 @@ bool GetProfileArrayDouble(const char * lpSecName, const char * lpKeyName,   dou
 bool WriteProfileArrayInt(const char * lpSecName, const char * lpKeyName,  int* pValue, int nElements, const char * lpFileName)
 {
     char szString[64];
-    char szArray[512];
+    char szArray[512]={0};
     for (int i=0; i< nElements; i++) {
         sprintf(szString, " %d,", pValue[i]);
         strcat(szArray, szString);

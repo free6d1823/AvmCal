@@ -5,12 +5,13 @@
 #include "imgview.h"
 #include "FecParam.h"
 #include "homowin.h"
+#include "fectooldlg.h"
 
 namespace Ui {
 class FecWin;
 }
 
-
+class FecToolDlg;
 class FecWin : public QDialog
 {
     Q_OBJECT
@@ -21,6 +22,13 @@ public:
     void SetFecParam(FecParam* pParam);
     void ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
                   unsigned char* pTar, int outStride);
+    AreaSettings* getAreaSettings(){return &m_as;}
+
+    /*!<if fromImgView is true: get ImgView FP and save to settings
+        otherwise: updateImgView FP with settings */
+    void UpdateFeaturePoints(bool fromImgView);
+    void SaveFeaturePoints();
+    void CalculateHomoMatrix();
     ~FecWin();
 private slots:
 
@@ -43,7 +51,6 @@ private slots:
     //Homo
     void onShowHomoChanged(int value);
 private:
-    void PosMapNormalize(double u, double v, double &x, double &y);
     void UpdateUI();
     int m_curAreaId;
     bool    m_bShowRuler;
@@ -54,6 +61,8 @@ private:
     AreaSettings m_as;
 
     HomoWin*    m_pHomoWin;
-};
 
+    FecToolDlg* m_pFecToolDlg;
+};
+extern FecWin* gFecWin;
 #endif // FECWIN_H

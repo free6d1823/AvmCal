@@ -1,17 +1,18 @@
 #include "mainwidget.h"
 #include <QMouseEvent>
+#include <QAction>
+#include <QMenuBar>
+#include <QLayout>
 #include "floor.h"
-#include "ImgProcess.h"
 
 Floor* m_pFloor = NULL;
-ImgProcess* gpImgProcess[MAX_CAMERAS]={0};
 
 MainWidget::MainWidget(QWidget *parent)
     : QOpenGLWidget(parent)
 {
     m_pFloor = NULL;
-    for (int i=0; i< MAX_CAMERAS; i++)
-        gpImgProcess[i] = new ImgProcess(i);
+    CreateMenus();
+    resize(800,800);
 }
 
 MainWidget::~MainWidget()
@@ -20,12 +21,23 @@ MainWidget::~MainWidget()
     if (m_pFloor)
         delete m_pFloor;
     doneCurrent();
-    for (int i=0; i< MAX_CAMERAS; i++){
-        if(gpImgProcess[i]) delete gpImgProcess[i];
-        gpImgProcess[i] = NULL;
-    }
 
 }
+void MainWidget::CreateMenus()
+{
+    QVBoxLayout *boxLayout = new QVBoxLayout(this);
+    setLayout(boxLayout);
+    QMenuBar* menuBar = new QMenuBar();;
+    QAction* newAct = new QAction(tr("&Calibrate..."), this);
+    newAct->setStatusTip(tr("FEC calibrations"));
+    connect(newAct, SIGNAL(triggered()), SLOT(onShowFecDialog()));
+
+    QMenu* fileMenu = menuBar->addMenu(tr("&File"));
+    fileMenu->addAction(newAct);
+    //layout()->setMenuBar(menuBar);
+    boxLayout->addWidget(menuBar);
+}
+
 void MainWidget::InitViewMode()
 {
     m_posCamera = QVector3D(0,20,0);
@@ -111,6 +123,7 @@ void MainWidget::paintGL()
     m_pFloor->draw(false);
 }
 #include "fecwin.h"
+
 void MainWidget::onShowFecDialog()
 {
     FecWin* pDlg = new FecWin;

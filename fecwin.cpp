@@ -1,6 +1,8 @@
 #include "fecwin.h"
 #include "ui_fecwin.h"
 #include <QFile>
+#include <QResizeEvent>
+#include "./imglab/ImgProcess.h"
 
 #define PI      3.1415967
 #define PI_2    (3.1415967*2.0)
@@ -8,8 +10,8 @@
 #define DEGREE_TO_RADIAN(d) (d*PI/180.0)
 
 void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst);
-
-
+ImgProcess gImgEngine;
+FecWin* gFecWin = NULL;
 FecWin::FecWin(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::FecWin)
@@ -33,21 +35,63 @@ FecWin::FecWin(QWidget *parent) :
     connect(ui->checkShowHomo, SIGNAL(stateChanged(int)), SLOT(onShowHomoChanged(int)));
 
     memset(&m_as, 0, sizeof(AreaSettings));
+    gFecWin  = this;
+
     m_pFecParam = &m_as.fec;
 
     m_pImgView  = new ImgView(this);
     m_curAreaId = 0;
     m_bShowRuler = false;
-    onAreaIdChanged(m_curAreaId);
 
     ui->layoutFec->addWidget(m_pImgView);
+    m_pHomoWin = new HomoWin(this);
+    m_pFecToolDlg = new FecToolDlg(this);
 
-    m_pHomoWin = new HomoWin(&m_as);
+    onAreaIdChanged(m_curAreaId);
     onShowHomoChanged(ui->checkShowHomo->isChecked());
+}
 
+void FecWin::CalculateHomoMatrix()
+{
+    dbPOINT s[MAX_FP_AREA][4] = {{m_as.fps[0], m_as.fps[1], m_as.fps[6], m_as.fps[5]},
+                     {m_as.fps[1], m_as.fps[2], m_as.fps[7], m_as.fps[6]},
+                     {m_as.fps[2], m_as.fps[3], m_as.fps[8], m_as.fps[7]},
+                     {m_as.fps[3], m_as.fps[4], m_as.fps[9], m_as.fps[8]}};
+    dbPOINT t[MAX_FP_AREA][4] = {{m_as.fpt[0], m_as.fpt[1], m_as.fpt[6], m_as.fpt[5]},
+                     {m_as.fpt[1], m_as.fpt[2], m_as.fpt[7], m_as.fpt[6]},
+                     {m_as.fpt[2], m_as.fpt[3], m_as.fpt[8], m_as.fpt[7]},
+                     {m_as.fpt[3], m_as.fpt[4], m_as.fpt[9], m_as.fpt[8]}};
 
+    for(int i=0; i<MAX_FP_AREA; i++) {
+
+        ImgProcess::findHomoMatreix(s[i],t[i],m_as.homo[i].h);
+    }
+}
+
+/*!<Feature points settings are modified, update ImgView and do homograph transform*/
+void FecWin::UpdateFeaturePoints(bool fromImgView)
+{
+    if(fromImgView){
+        m_pImgView->saveFps();
+        CalculateHomoMatrix();
+    }else {
+        m_pImgView->loadFps();
+    }
+
+    //
+    m_pHomoWin->UpdateUI();
+    //now update HomoWin
+    m_pHomoWin->setSourceImage(m_pImgView->getImageData(), m_pImgView->getImageWidth(),
+                               m_pImgView->getImageStride(), m_pImgView->getImageHeight(),
+                               m_curAreaId);
 
 }
+/*!<Save AreaSettings to ini*/
+void FecWin::SaveFeaturePoints()
+{
+    SaveAreaSettings(&m_as, m_curAreaId);
+}
+
 bool FecWin::LoadImage(const char* path, int nID)
 {
     QFile fp(path);
@@ -92,6 +136,9 @@ bool FecWin::LoadImage(const char* path, int nID)
     free(pSrc);
     free(pOut);
     free(pRgb);
+    //now update HomoWin
+    m_pHomoWin->setSourceImage(m_pImgView->getImageData(), outWidth, outStride, outHeight,
+                               nID);
     return true;
 }
 
@@ -105,7 +152,8 @@ void FecWin::ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
         v = (double)i/(double)height;
         for (int j=0; j<width; j++) {
             u = (double)j/(double)width;
-            PosMapNormalize(u,v,x,y);
+            gImgEngine.doFec(u,v,x,y, m_pFecParam);
+
             if ( x>=0 && x<1 && y>=0 && y< 1){
                 nX = (int) (x * (double) width+0.5);
                 nY = (int) (y * (double) height+0.5);
@@ -127,6 +175,10 @@ void FecWin::ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
 
 FecWin::~FecWin()
 {
+    if(m_pHomoWin)
+        m_pHomoWin->close();
+    if(m_pFecToolDlg)
+        m_pFecToolDlg->close();
     delete ui;
     if(m_pImgView){
 
@@ -154,10 +206,19 @@ void FecWin::onAreaIdChanged(int value)
     m_curAreaId = value;
     //update parameters
     LoadAreaSettings(&m_as, value);
+   //update homo coefficents
+    CalculateHomoMatrix();
+
+
+    //inform HowView to change AreaSettings
+    m_pHomoWin->setAreaSettings(&m_as);
+    m_pFecToolDlg->UpdateUi();
+
     //update m_pFecParam to UI
     UpdateUI();
     //update image
     LoadImage(":/camera1800x1440.yuv", value);
+    m_pImgView->loadFps();
 
 
 }
@@ -167,72 +228,21 @@ void FecWin::onShowRulerChanged(int value)
 }
 void FecWin::onShowHomoChanged(int value)
 {
-    if (value > 0)
+    m_pImgView->showFp(value !=0);
+    if (value > 0){
+
         m_pHomoWin->show();
-    else
+        m_pFecToolDlg->show();
+    }
+    else {
         m_pHomoWin->hide();
+        m_pFecToolDlg->hide();
+    }
 }
 
 void FecWin::SetFecParam(FecParam* pParam)
 {
     memcpy(m_pFecParam, pParam, sizeof(FecParam));
-}
-
-
-void FecWin::PosMapNormalize(double u, double v, double &x, double &y)
-{
-    double  u1, v1;
-    double x1,y1;
-    //transform uu = M x u
-    u1 = u-0.5;
-    v1 = v-0.5;
-    double fr = 2*tan(m_pFecParam->fov/2); //focus length of rectified image
-
-    double rp = sqrt(u1*u1+v1*v1); //radius of point (u1,v1) on rectified image
-    double rq;	//fisheye
-
-    double rq1;
-
-    if(1) //fisheye
-        rq1 = atan(rp*fr)/PI_2;		//0~1
-    else //normal lens
-        rq1 = rp; //if no fec
-
-    //LDC
-    if (rp <= 0) {
-        x1 = y1 = 0;
-    } else {
-        u1  = u1 * rq1/rp;
-        v1  = v1 * rq1/rp;
-
-        double rq2 = rq1*rq1;
-        rq  = (1+m_pFecParam->k1* rq2+ m_pFecParam->k2* rq2*rq2);
-        x1 = u1/rq;
-        //t
-        y1 = v1/rq+m_pFecParam->c*rq2;
-    }
-    double x2,y2;
-    //pitch
-    double phi = atan(y1*2);//assume r=0.5
-    double sy = 1+tan(m_pFecParam->pitch)*tan(phi);
-    x2 = x1/sy;
-    y2 = (y1/sy)/cos(m_pFecParam->pitch);
-    //yaw
-    double theda = atan(x2*2);
-    double sx = 1+tan(m_pFecParam->yaw)*tan(theda);
-    x2 = (x2/sx)/cos(m_pFecParam->yaw);
-    y2 = y2/sx;
-
-    //spin - z-axis
-    x1 = cos(m_pFecParam->roll)* x2 - sin(m_pFecParam->roll)*y2;
-    y1 = sin(m_pFecParam->roll)* x2 + cos(m_pFecParam->roll)*y2;
-    //intrinsic parameters calibration
-    //t 	x1 = param.a*x1 + param.c*y1;		//x-scale and de-skewness
-    x1 = m_pFecParam->a*x1;		//x-scale and de-skewness
-    y1 = m_pFecParam->b*y1;								//y- scale
-    x = (x1+ m_pFecParam->ptCenter.x);
-    y = (y1+ m_pFecParam->ptCenter.y);
-
 }
 
 void FecWin::onFovValueChanged(double value)
@@ -257,7 +267,7 @@ void FecWin::onRollChanged(double value){    m_pFecParam->roll = DEGREE_TO_RADIA
 void FecWin::accept()
 {
 
-    SaveFecParam(m_pFecParam, m_curAreaId);
+    SaveAreaSettings(&m_as, m_curAreaId);
     UpdateUI();
     LoadImage(":/camera1800x1440.yuv", m_curAreaId);
 }

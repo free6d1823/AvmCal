@@ -1,7 +1,7 @@
 #ifndef HOMOWIN_H
 #define HOMOWIN_H
 
-#include <QWidget>
+#include <QDialog>
 #include "FecParam.h"
 #include "homoview.h"
 
@@ -9,22 +9,29 @@ namespace Ui {
 class HomoWin;
 }
 
-class HomoWin : public QWidget
+class HomoWin : public QDialog
 {
+    friend class HomoView;
     Q_OBJECT
 
 public:
-    explicit HomoWin(AreaSettings* pAs, QWidget *parent = 0);
+    explicit HomoWin(QWidget *parent = 0);
     ~HomoWin();
-    void setAreaSettings(AreaSettings* pAs){
-        m_pAs = pAs;
-        UpdateUI();
-    }
+    void setAreaSettings(AreaSettings* pAs);
+    AreaSettings*  getAreaSettings(){return m_pAs;}
+    void setSourceImage(void* pRgb, int width, int stride, int height, int areaId);
     void UpdateUI();
+
+private slots:
+    void onShowGrideChanged(int value);
+     void onPreviewClicked();
+    void onSaveClicked();
+
 private:
     Ui::HomoWin *ui;
 
     HomoView* m_pImgView;
+protected:
     AreaSettings* m_pAs;
 };
 
