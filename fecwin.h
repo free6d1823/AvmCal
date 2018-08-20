@@ -18,7 +18,7 @@ class FecWin : public QDialog
 
 public:
     explicit FecWin(QWidget *parent = 0);
-    bool LoadImage(const char* path, int nID);
+    bool LoadImage(int nID);
     void SetFecParam(FecParam* pParam);
     void ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
                   unsigned char* pTar, int outStride);

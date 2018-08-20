@@ -8,8 +8,7 @@ void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigne
 ImgView::ImgView(QWidget *parent)
     :   QWidget(parent)
 {
-    m_pImgData = NULL;
-    m_width = m_height = 0;
+    m_pImg = NULL;
     m_bDragMode = false;
     m_bDrawRuler = false;
     m_ptStart = QPointF(0,0);
@@ -17,36 +16,21 @@ ImgView::ImgView(QWidget *parent)
 }
 ImgView::~ImgView()
 {
-    if (m_pImgData) {
-        delete m_pImgData;
-        m_pImgData = NULL;
+    if (m_pImg){
+        ImgProcess::freeImage(m_pImg);
+        m_pImg = NULL;
     }
 }
-unsigned char* ImgView::getImageData(){
-    return m_pImgData;
-}
-
-void ImgView::setImageRGB32(unsigned char* pRgb, int width, int stride, int height)
+void ImgView::setImage(IMAGE* pImg)
 {
-    if (m_width != width || m_height != height){
-        if (m_pImgData) {
-            free (m_pImgData);
-        }
-        m_width = width;
-        m_height = height;
-        m_stride = m_width*4;
-        m_pImgData = (unsigned char*) malloc(m_stride*height);
+    if (m_pImg){
+        ImgProcess::freeImage(m_pImg);
+        m_pImg = NULL;
     }
-    unsigned char* pSrc = pRgb;
-    unsigned char* pTar = m_pImgData;
-
-    for (int i=0; i<height; i++) {
-        memcpy(pTar, pSrc, m_stride);
-        pSrc += stride;
-        pTar += m_stride;
-    }
+    m_pImg = pImg;
     update();
 }
+
 void ImgView::saveFps()
 {
     QSizeF sz = rect().size();
@@ -70,21 +54,7 @@ void ImgView::loadFps()
     update();
 }
 
-void ImgView::setImage(unsigned char* pYuv, int width, int stride, int height)
-{
-    if (m_width != width || m_height != height){
-        if (m_pImgData) {
-            free (m_pImgData);
-        }
-        m_width = width;
-        m_height = height;
-        m_stride = m_width*4;
-        m_pImgData = (unsigned char*) malloc(m_stride*height);
-    }
-    YuyvToRgb32(pYuv, width, stride, height, m_pImgData, true);
 
-    loadFps();
-}
 
 
 void ImgView::paintEvent(QPaintEvent * /*event*/)
@@ -96,15 +66,15 @@ void ImgView::paintEvent(QPaintEvent * /*event*/)
         {m_fps[3],m_fps[4],m_fps[9],m_fps[8]}};
 
     QPainter painter(this);
-    QRect rcTarget = rect();
-    QRect rcSrc = QRect(0,0,m_width, m_height);
+    QRectF rcTarget = rect();
 
-    if(m_pImgData){
+    if(m_pImg){
+        QRectF rcSrc = QRectF(0,0,m_pImg->width, m_pImg->height);
         QImage image(
-                m_pImgData,
-                m_width,
-                m_height,
-                m_stride,
+                m_pImg->buffer,
+                m_pImg->width,
+                m_pImg->height,
+                m_pImg->stride,
                 QImage::Format_RGBA8888);
         painter.drawImage(rcTarget, image, rcSrc);
         if(m_bDrawRuler) {
@@ -204,4 +174,3 @@ void ImgView::mouseReleaseEvent(QMouseEvent *e)
     update();
 
 }
-

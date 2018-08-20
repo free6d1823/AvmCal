@@ -11,8 +11,8 @@ HomoWin::HomoWin(QWidget *parent) :
     ui(new Ui::HomoWin)
 {
     ui->setupUi(this);
-    connect(ui->btnPreview, SIGNAL(clicked()), SLOT(onPreviewClicked()));
-    connect(ui->btnSave, SIGNAL(clicked()), SLOT(onSaveClicked()));
+    connect(ui->btnGen, SIGNAL(clicked()), SLOT(onGenTable()));
+    connect(ui->btnRedraw, SIGNAL(clicked()), SLOT(onRedrawAll()));
     connect(ui->checkShowGride, SIGNAL(stateChanged(int)), SLOT(onShowGrideChanged(int)));
 
     m_pAs = NULL;
@@ -34,22 +34,24 @@ void HomoWin::UpdateUI()
     if(!m_pAs)
         return;
  }
-void HomoWin::setSourceImage(void* pRgb, int width, int stride, int height, int areaId)
+void HomoWin::setSourceImage(IMAGE* pImg, int areaId)
 {
     if(m_pImgView) {
-m_pImgView->setImageRGB32((unsigned char*) pRgb, width, stride, height, areaId);
+        m_pImgView->setImage(pImg, areaId);
     }
 }
 
 
-void HomoWin::onPreviewClicked()
+void HomoWin::onGenTable()
 {
 
 }
 
-void HomoWin::onSaveClicked()
+void HomoWin::onRedrawAll()
 {
-
+    if(m_pImgView) {
+        m_pImgView->drawAl();
+    }
 }
 
 void HomoWin::onShowGrideChanged(int value)

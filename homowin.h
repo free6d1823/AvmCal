@@ -4,6 +4,7 @@
 #include <QDialog>
 #include "FecParam.h"
 #include "homoview.h"
+#include "./imglab/ImgProcess.h"
 
 namespace Ui {
 class HomoWin;
@@ -19,13 +20,13 @@ public:
     ~HomoWin();
     void setAreaSettings(AreaSettings* pAs);
     AreaSettings*  getAreaSettings(){return m_pAs;}
-    void setSourceImage(void* pRgb, int width, int stride, int height, int areaId);
+    void setSourceImage(IMAGE* pImg, int areaId);
     void UpdateUI();
 
 private slots:
     void onShowGrideChanged(int value);
-     void onPreviewClicked();
-    void onSaveClicked();
+     void onGenTable();
+    void onRedrawAll();
 
 private:
     Ui::HomoWin *ui;

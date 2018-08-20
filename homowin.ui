@@ -24,7 +24,7 @@
    </property>
    <layout class="QVBoxLayout" name="layoutHomo"/>
   </widget>
-  <widget class="QPushButton" name="btnPreview">
+  <widget class="QPushButton" name="btnGen">
    <property name="geometry">
     <rect>
      <x>180</x>
@@ -34,10 +34,10 @@
     </rect>
    </property>
    <property name="text">
-    <string>Preview</string>
+    <string>Gen Table</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="btnSave">
+  <widget class="QPushButton" name="btnRedraw">
    <property name="geometry">
     <rect>
      <x>280</x>
@@ -50,7 +50,7 @@
     <number>0</number>
    </property>
    <property name="text">
-    <string>Save</string>
+    <string>Draw All</string>
    </property>
   </widget>
   <widget class="QCheckBox" name="checkShowGride">

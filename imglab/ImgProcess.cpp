@@ -1,7 +1,15 @@
 #include "ImgProcess.h"
 #include "Mat.h"
+#include <QFile>
 
 #define PI_2    (3.1415967*2.0)
+#define IMAGE_PATH  ":/camera1800x1440.yuv"
+#define IMAGE_WIDTH 1800
+#define IMAGE_HEIGHT    1440
+#define IMAGE_AREA_WIDTH    900
+#define IMAGE_AREA_HEIGHT   720
+
+void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst);
 
 
 ImgProcess::ImgProcess()
@@ -10,6 +18,115 @@ ImgProcess::ImgProcess()
 }
 ImgProcess::~ImgProcess()
 {
+}
+
+static int seq=0;
+IMAGE* ImgProcess::initImage(int w, int h)
+{
+
+    IMAGE* img = (IMAGE*)malloc(sizeof(IMAGE) );
+    if (!img)
+        return img;
+    img->seq = ++seq;
+    img->buffer = (unsigned char*)malloc( w*4*h);
+    img->width = w;
+    img->stride = w*4;
+    img->height = h;
+
+    printf ("ImgProcess::initImage#%d (%dx%d)\n", img->seq, w, h);
+
+    return img;
+}
+
+void ImgProcess::freeImage(IMAGE* pImage)
+{
+    if(pImage) {
+printf("ImgProcess::freeImage,#%d - %dx%d\n", pImage->seq, pImage->width,
+       pImage->height);
+        if(pImage->buffer) free(pImage->buffer);
+        free(pImage);//include freeing pImge->buffer
+    }
+}
+
+IMAGE* ImgProcess::loadImage()
+{
+    QFile fp(IMAGE_PATH);
+    if(!fp.open(QIODevice::ReadOnly))
+            return NULL;
+
+    IMAGE* pImg = initImage(IMAGE_WIDTH, IMAGE_HEIGHT);
+    if (!pImg){
+       fp.close();
+       return pImg;
+    }
+    do {
+        unsigned char* pSrc = (unsigned char*) malloc(IMAGE_WIDTH*2*IMAGE_HEIGHT);
+        if (!pSrc)
+            break;
+        fp.read((char* )pSrc, IMAGE_WIDTH*2*IMAGE_HEIGHT);
+        YuyvToRgb32(pSrc, IMAGE_WIDTH, IMAGE_WIDTH*2, IMAGE_HEIGHT, pImg->buffer, true);
+        free(pSrc);
+    }while(0);
+   fp.close();
+   return pImg;
+}
+IMAGE* ImgProcess::loadImageArea(int idArea)
+{
+    IMAGE* pSrc = loadImage();
+    if (!pSrc)
+        return NULL;
+    IMAGE* pOut = initImage(IMAGE_AREA_WIDTH, IMAGE_AREA_HEIGHT);
+    unsigned char* pIn;
+    switch (idArea) {
+    case 0:
+        pIn = pSrc->buffer;
+        break;
+    case 1:
+        pIn = pSrc->buffer+ IMAGE_AREA_WIDTH*4;
+        break;
+    case 2:
+        pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT;
+        break;
+    case 3:
+    default:
+        pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT+ IMAGE_AREA_WIDTH*4;
+        break;
+    }
+    FecParam fec;
+    LoadFecParam(&fec, idArea);
+    ApplyFec(pIn, pOut->width, pSrc->stride, pOut->height,
+             pOut->buffer, pOut->stride, &fec);
+    ImgProcess::freeImage(pSrc);
+    return pOut;
+}
+void ImgProcess::ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
+                        unsigned char* pTar, int outStride, FecParam* pFec)
+{
+    double x,y,u,v;
+    int nX, nY;
+    for (int i=0; i< height; i++) {
+        v = (double)i/(double)height;
+        for (int j=0; j<width; j++) {
+            u = (double)j/(double)width;
+            ImgProcess::doFec(u,v,x,y, pFec);
+
+            if ( x>=0 && x<1 && y>=0 && y< 1){
+                nX = (int) (x * (double) width+0.5);
+                nY = (int) (y * (double) height+0.5);
+
+                pTar[i*outStride + j*4  ] = pSrc[nY*inStride+nX*4  ];//B
+                pTar[i*outStride + j*4+1] = pSrc[nY*inStride+nX*4+1];//G
+                pTar[i*outStride + j*4+2] = pSrc[nY*inStride+nX*4+2];//R
+                pTar[i*outStride + j*4+3] = pSrc[nY*inStride+nX*4+3];//A
+            }
+            else {
+                pTar[i*outStride + j*4  ] = 0;
+                pTar[i*outStride + j*4+1] = 0;
+                pTar[i*outStride + j*4+2] = 0;
+                pTar[i*outStride + j*4+3] = 0xff;
+            }
+        }
+    }
 }
 
 void ImgProcess::doFec(double u, double v, double &x, double &y, FecParam* m_pFec)

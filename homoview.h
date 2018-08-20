@@ -4,6 +4,7 @@
 #include <QWidget>
 #include "FecParam.h"
 #include "homoview.h"
+#include "./imglab/ImgProcess.h"
 
 class HomoWin;
 class HomoView : public QWidget
@@ -13,20 +14,25 @@ class HomoView : public QWidget
 public:
     explicit HomoView(HomoWin *parent);
     ~HomoView();
-    void setImageRGB32(unsigned char* pRgb, int width, int stride, int height, int nAreaID);
+    void setImage(IMAGE* pImg, int nAreaID);
     void paintEvent(QPaintEvent *event);
     void resizeEvent(QResizeEvent *event);
     void showRuler(bool bShow);
     void loadFeaturePoints();
+    void drawAl();
 private:
     void HomoTransform();
 
     HomoWin * m_pOwner;
     bool    m_bDrawRuler;
-    QPointF m_fp[FP_COUNTS];
+    QPointF m_fp[FP_COUNTS];    
     QRectF  m_region[MAX_FP_AREA];
-    unsigned char* m_pImgRef;/*<! source imgae, current area*/
+    IMAGE* m_pRef;
+    IMAGE* m_pImg;
+
     int m_nAreaId;          /*<! area of current area source imgae*/
+
+    unsigned char* m_pImgRef;/*<! source imgae, current area*/
     int m_width;/*<! source imgae width*/
     int m_height;
     int m_stride;

@@ -81,9 +81,7 @@ void FecWin::UpdateFeaturePoints(bool fromImgView)
     //
     m_pHomoWin->UpdateUI();
     //now update HomoWin
-    m_pHomoWin->setSourceImage(m_pImgView->getImageData(), m_pImgView->getImageWidth(),
-                               m_pImgView->getImageStride(), m_pImgView->getImageHeight(),
-                               m_curAreaId);
+    m_pHomoWin->setSourceImage(m_pImgView->getImage(), m_curAreaId);
 
 }
 /*!<Save AreaSettings to ini*/
@@ -92,53 +90,13 @@ void FecWin::SaveFeaturePoints()
     SaveAreaSettings(&m_as, m_curAreaId);
 }
 
-bool FecWin::LoadImage(const char* path, int nID)
+bool FecWin::LoadImage(int nID)
 {
-    QFile fp(path);
-    if(!fp.open(QIODevice::ReadOnly))
-            return false;
-    int inWidth = 1800;
-    int inStride = inWidth*2;
-    int inHeight = 1440;
-    int outWidth = 900;
-    int outHeight = 720;
-    int outStride = outWidth*4;
-
-    unsigned char* pSrc = (unsigned char*) malloc(inStride*inHeight);
-    unsigned char* pRgb = (unsigned char*) malloc(inWidth*4*inHeight);
-    unsigned char* pOut = (unsigned char*) malloc(outStride*outHeight);
-
-    fp.read((char* )pSrc, inStride*inHeight);
-    fp.close();
-    //convert YUV to RGB32
-    YuyvToRgb32(pSrc, inWidth, inStride, inHeight, pRgb, true);
-    inStride = inWidth*4;
-
-    unsigned char* pIn;
-    switch (nID) {
-    case 0:
-        pIn = pRgb;
-        break;
-    case 1:
-        pIn = pRgb+ outStride;
-        break;
-    case 2:
-        pIn = pRgb + inStride*outHeight;
-        break;
-    case 3:
-    default:
-        pIn = pRgb + inStride*outHeight+ outStride;
-        break;
-    }
-    //apply algorithm
-    ApplyFec(pIn, outWidth, inStride,  outHeight, pOut, outStride);
-    m_pImgView->setImageRGB32(pOut, outWidth, outStride,  outHeight);
-    free(pSrc);
-    free(pOut);
-    free(pRgb);
-    //now update HomoWin
-    m_pHomoWin->setSourceImage(m_pImgView->getImageData(), outWidth, outStride, outHeight,
-                               nID);
+    IMAGE* pImg = ImgProcess::loadImageArea(nID);
+    if (!pImg)
+        return false;
+    m_pImgView->setImage(pImg);
+    m_pHomoWin->setSourceImage(pImg, nID);
     return true;
 }
 
@@ -208,8 +166,6 @@ void FecWin::onAreaIdChanged(int value)
     LoadAreaSettings(&m_as, value);
    //update homo coefficents
     CalculateHomoMatrix();
-
-
     //inform HowView to change AreaSettings
     m_pHomoWin->setAreaSettings(&m_as);
     m_pFecToolDlg->UpdateUi();
@@ -217,10 +173,8 @@ void FecWin::onAreaIdChanged(int value)
     //update m_pFecParam to UI
     UpdateUI();
     //update image
-    LoadImage(":/camera1800x1440.yuv", value);
+    LoadImage(value);
     m_pImgView->loadFps();
-
-
 }
 void FecWin::onShowRulerChanged(int value)
 {
@@ -250,7 +204,7 @@ void FecWin::onFovValueChanged(double value)
     //degree to gradian
     m_pFecParam->fov = DEGREE_TO_RADIAN(value);
     //update image
-    LoadImage(":/camera1800x1440.yuv", m_curAreaId);
+    LoadImage(m_curAreaId);
 
 }
 void FecWin::onIntricAChanged(double value){    m_pFecParam->a = value;}
@@ -269,9 +223,9 @@ void FecWin::accept()
 
     SaveAreaSettings(&m_as, m_curAreaId);
     UpdateUI();
-    LoadImage(":/camera1800x1440.yuv", m_curAreaId);
+    LoadImage(m_curAreaId);
 }
 void FecWin::onPreviewClicked()
 {
-    LoadImage(":/camera1800x1440.yuv", m_curAreaId);
+    LoadImage(m_curAreaId);
 }

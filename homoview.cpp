@@ -14,45 +14,28 @@ HomoView::HomoView(HomoWin *parent) : QWidget((QWidget*)parent)
     for (int i=0; i< FP_COUNTS; i++) {
         m_fp[i] = QPointF(0,0);
     }
-    m_pImgData = (unsigned char*)malloc(OUT_STRIDE*OUT_HEIGHT);
-    if(!m_pImgData){
-        perror("HomoView error: Out of memory!!\n");
-    }
-    memset(m_pImgData, 0, OUT_STRIDE*OUT_HEIGHT);
-     m_width = m_height = 0;
+    m_pImg = ImgProcess::initImage(OUT_WIDTH, OUT_HEIGHT);
+    m_pRef = NULL;
 }
 HomoView::~HomoView()
 {
-    if (m_pImgData) {
-        delete m_pImgData;
+    if (m_pImg) {
+        ImgProcess::freeImage(m_pImg);
+        m_pImg = NULL;
     }
 }
 
 void HomoView::HomoTransform()
 {
-    //temp
-    unsigned char* pSrc= m_pImgRef;
-    unsigned char* pTar= m_pImgData;
-    int line = OUT_STRIDE;
-    if (m_stride<OUT_STRIDE) line = m_stride;
-    int height = OUT_HEIGHT;
-    if (height > m_height)height = m_height;
-    for (int i=0; i<height; i++){
-        memcpy(pTar, pSrc, line);
-        pSrc += m_stride;
-        pTar += OUT_STRIDE;
-    }
+
 }
-void HomoView::setImageRGB32(unsigned char* pRgb, int width, int stride, int height, int nAreaID)
+void HomoView::setImage(IMAGE* pImg, int nAreaID)
 {
-    m_width = width;
-    m_height = height;
-    m_stride = stride;
-    m_pImgRef = pRgb;
+    m_pRef = pImg;
     m_nAreaId = nAreaID;
     //
-    unsigned char* pSrc= m_pImgRef;
-    unsigned char* pTar= m_pImgData;
+    unsigned char* pSrc= m_pRef->buffer;
+    unsigned char* pTar= m_pImg->buffer;
     HomoParam* homo = gFecWin->getAreaSettings()->homo;
     dbRECT* pRegion = gFecWin->getAreaSettings()->region;
 
@@ -69,9 +52,10 @@ void HomoView::setImageRGB32(unsigned char* pRgb, int width, int stride, int hei
                 double s = (double)j/(double)OUT_WIDTH; //normalized coordingnates
                 double u,v;
                 if (ImgProcess::doHomoTransform(s,t,u,v, homo[k].h)) {
-                    int x = u * width;
-                    int y = v * height;
-                    int offset = y*stride + x*4;
+                    int x = (int)(u * (double) m_pRef->width);
+                    int y = (int)(v * (double) m_pRef->height);
+                    int offset = y*m_pRef->stride + x*4;
+
                     pTar[i*OUT_STRIDE+j*4]= pSrc[offset];
                     pTar[i*OUT_STRIDE+j*4+1]= pSrc[offset+1];
                     pTar[i*OUT_STRIDE+j*4+2]= pSrc[offset+2];
@@ -86,8 +70,19 @@ void HomoView::setImageRGB32(unsigned char* pRgb, int width, int stride, int hei
         }
 
     }
+    update();
+}
 
-
+void HomoView::drawAl()
+{
+    AreaSettings as;
+   for (int k=0; k< MAX_CAMERAS; k++) {
+       memset(&as, 0, sizeof(as));
+       LoadAreaSettings(&as, k);
+       //we assume h coeffs are updated
+       //load whole image
+       ImgProcess::loadImage();
+   }
 
     update();
 }
@@ -97,12 +92,12 @@ void HomoView::paintEvent(QPaintEvent */*event*/)
     QPainter painter(this);
     QRect rcTarget = rect();
     QRect rcSrc = QRect(0,0,OUT_WIDTH, OUT_HEIGHT);
-    if(m_pImgData){
+    if(m_pImg){
         QImage image(
-                m_pImgData,
-                OUT_WIDTH,
-                OUT_HEIGHT,
-                OUT_STRIDE,
+                m_pImg->buffer,
+                m_pImg->width,
+                m_pImg->height,
+                m_pImg->stride,
                 QImage::Format_RGBA8888);
         painter.drawImage(rcTarget, image, rcSrc);
 

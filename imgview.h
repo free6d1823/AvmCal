@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QImage>
 #include "FecParam.h"
+#include "./imglab/ImgProcess.h"
 
 class ImgView: public QWidget
 {
@@ -13,12 +14,9 @@ public:
     explicit ImgView(QWidget *parent = 0);
     ~ImgView();
 
-    void setImage(unsigned char* pYuv, int width, int stride, int height);
-    void setImageRGB32(unsigned char* pRgb, int width, int stride, int height);
-    unsigned char* getImageData();
-    int getImageWidth(){return m_width;}
-    int getImageHeight(){return m_height;}
-    int getImageStride(){return m_stride;}
+    void setImage(IMAGE* pImg);
+    IMAGE* getImage(){return m_pImg;}
+
 
     // QWidget
     void paintEvent(QPaintEvent *event);
@@ -38,13 +36,11 @@ private:
     QPointF  m_ptStart;
     QPointF  m_ptEnd;
 
-    unsigned char* m_pImgData;//RGB32
-    int m_width;
-    int m_height;
-    int m_stride;
+    IMAGE* m_pImg;
 
     bool    m_bShowFp;
     int     m_focusFpId;
+
     //FP coordinates of rectified image, on display window, in pixels
      QPointF m_fps[FP_COUNTS];
 
