@@ -22,6 +22,7 @@ public:
     AreaSettings*  getAreaSettings(){return m_pAs;}
     void setSourceImage(IMAGE* pImg, int areaId);
     void UpdateUI();
+    void closeEvent (QCloseEvent *event);
 
 private slots:
     void onShowGrideChanged(int value);

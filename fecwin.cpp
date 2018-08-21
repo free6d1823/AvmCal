@@ -19,7 +19,6 @@ FecWin::FecWin(QWidget *parent) :
     ui->setupUi(this);
     connect(ui->btnPreview, SIGNAL(clicked()), SLOT(onPreviewClicked()));
     connect(ui->spinFov, SIGNAL(valueChanged(double)), SLOT(onFovValueChanged(double)));
-    connect(ui->spinAreaId, SIGNAL(valueChanged(int)), SLOT(onAreaIdChanged(int)));
     connect(ui->checkShowRuler, SIGNAL(stateChanged(int)), SLOT(onShowRulerChanged(int)));
     connect(ui->spina, SIGNAL(valueChanged(double)), SLOT(onIntricAChanged(double)));
     connect(ui->spinb, SIGNAL(valueChanged(double)), SLOT(onIntricBChanged(double)));
@@ -33,6 +32,11 @@ FecWin::FecWin(QWidget *parent) :
     connect(ui->spinRoll, SIGNAL(valueChanged(double)), SLOT(onRollChanged(double)));
 
     connect(ui->checkShowHomo, SIGNAL(stateChanged(int)), SLOT(onShowHomoChanged(int)));
+    ui->radioCam0->setChecked(true);
+    connect(ui->radioCam0, SIGNAL(toggled(bool)), SLOT(onArea0Changed(bool)));
+    connect(ui->radioCam1, SIGNAL(toggled(bool)), SLOT(onArea1Changed(bool)));
+    connect(ui->radioCam2, SIGNAL(toggled(bool)), SLOT(onArea2Changed(bool)));
+    connect(ui->radioCam3, SIGNAL(toggled(bool)), SLOT(onArea3Changed(bool)));
 
     memset(&m_as, 0, sizeof(AreaSettings));
     gFecWin  = this;
@@ -53,19 +57,7 @@ FecWin::FecWin(QWidget *parent) :
 
 void FecWin::CalculateHomoMatrix()
 {
-    dbPOINT s[MAX_FP_AREA][4] = {{m_as.fps[0], m_as.fps[1], m_as.fps[6], m_as.fps[5]},
-                     {m_as.fps[1], m_as.fps[2], m_as.fps[7], m_as.fps[6]},
-                     {m_as.fps[2], m_as.fps[3], m_as.fps[8], m_as.fps[7]},
-                     {m_as.fps[3], m_as.fps[4], m_as.fps[9], m_as.fps[8]}};
-    dbPOINT t[MAX_FP_AREA][4] = {{m_as.fpt[0], m_as.fpt[1], m_as.fpt[6], m_as.fpt[5]},
-                     {m_as.fpt[1], m_as.fpt[2], m_as.fpt[7], m_as.fpt[6]},
-                     {m_as.fpt[2], m_as.fpt[3], m_as.fpt[8], m_as.fpt[7]},
-                     {m_as.fpt[3], m_as.fpt[4], m_as.fpt[9], m_as.fpt[8]}};
-
-    for(int i=0; i<MAX_FP_AREA; i++) {
-
-        ImgProcess::findHomoMatreix(s[i],t[i],m_as.homo[i].h);
-    }
+    ImgProcess::calculateHomoMatrix(m_as.fps, m_as.fpt, m_as.homo);
 }
 
 /*!<Feature points settings are modified, update ImgView and do homograph transform*/
@@ -92,7 +84,7 @@ void FecWin::SaveFeaturePoints()
 
 bool FecWin::LoadImage(int nID)
 {
-    IMAGE* pImg = ImgProcess::loadImageArea(nID);
+    IMAGE* pImg = ImgProcess::loadImageArea(nID, m_pFecParam);
     if (!pImg)
         return false;
     m_pImgView->setImage(pImg);
@@ -158,6 +150,10 @@ void FecWin::UpdateUI()
     ui->spinRoll->setValue(RADIAN_TO_DEGREE(m_pFecParam->roll));
 
 }
+void FecWin::onArea0Changed(bool value){if(value)onAreaIdChanged(0);}
+void FecWin::onArea1Changed(bool value){if(value)onAreaIdChanged(1);}
+void FecWin::onArea2Changed(bool value){if(value)onAreaIdChanged(2);}
+void FecWin::onArea3Changed(bool value){if(value)onAreaIdChanged(3);}
 
 void FecWin::onAreaIdChanged(int value)
 {

@@ -3,7 +3,7 @@
 /* exclude these lines when merge to floo.cpp of navm  */
 #define IN_AVMCAL
 #ifdef IN_AVMCAL
-#include "ImgProcess.h"
+#include "./imglab/ImgProcess.h"
 extern ImgProcess* gpImgProcess[MAX_CAMERAS];
 #endif //IN_AVMCAL
 /* exclude these lines when merge to floo.cpp of navm  */
@@ -186,7 +186,7 @@ void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
     for (i=0; i<= MAX_GRIDES; i++) {
         for (j=0; j<=MAX_GRIDES; j++) {
             vert.push_back(QVector3D(j*diff*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-i*diff*TZ_SCALEUP));
-            uvs.push_back(QVector2D(j*diff, i*diff));
+ //           uvs.push_back(QVector2D(j*diff, i*diff));
         }
     }
 
@@ -204,12 +204,9 @@ void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
             k++;
         }
     }
-#ifdef xIN_AVMCAL
-    uvs.clear();
-    for (i=0;i<4;i++)
-    {
-        gpImgProcess[i]->updateUv(uvs);
-    }
+#ifdef IN_AVMCAL
+
+    ImgProcess::updateUv(uvs, MAX_GRIDES,MAX_GRIDES);
 #endif //IN_AVMCAL
 }
 

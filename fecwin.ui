@@ -19,10 +19,10 @@
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>9</x>
-     <y>29</y>
+     <x>10</x>
+     <y>40</y>
      <width>781</width>
-     <height>701</height>
+     <height>661</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="layoutFec"/>
@@ -30,8 +30,8 @@
   <widget class="QCheckBox" name="checkShowRuler">
    <property name="geometry">
     <rect>
-     <x>390</x>
-     <y>0</y>
+     <x>550</x>
+     <y>10</y>
      <width>101</width>
      <height>23</height>
     </rect>
@@ -41,22 +41,6 @@
    </property>
    <property name="checked">
     <bool>false</bool>
-   </property>
-  </widget>
-  <widget class="QSpinBox" name="spinAreaId">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>0</y>
-     <width>99</width>
-     <height>26</height>
-    </rect>
-   </property>
-   <property name="prefix">
-    <string>Area </string>
-   </property>
-   <property name="maximum">
-    <number>3</number>
    </property>
   </widget>
   <widget class="QGroupBox" name="groupBox">
@@ -472,8 +456,8 @@
   <widget class="QCheckBox" name="checkShowHomo">
    <property name="geometry">
     <rect>
-     <x>510</x>
-     <y>0</y>
+     <x>670</x>
+     <y>10</y>
      <width>101</width>
      <height>23</height>
     </rect>
@@ -484,6 +468,58 @@
    <property name="checked">
     <bool>false</bool>
    </property>
+  </widget>
+  <widget class="QGroupBox" name="groupCam">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>-30</y>
+     <width>298</width>
+     <height>71</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string/>
+   </property>
+   <property name="flat">
+    <bool>true</bool>
+   </property>
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout_9">
+    <item>
+     <widget class="QRadioButton" name="radioCam0">
+      <property name="text">
+       <string>Cam0</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QRadioButton" name="radioCam1">
+      <property name="text">
+       <string>Cam1</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QRadioButton" name="radioCam2">
+      <property name="text">
+       <string>Cam2</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QRadioButton" name="radioCam3">
+      <property name="text">
+       <string>Cam3</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>

@@ -13,7 +13,7 @@
 #ifndef INI_FILE_H_
 #define INI_FILE_H_
 
-#include "ImgProcess.h"
+#include "./imglab/ImgProcess.h"
 
 bool GetProfileString( const char *section, const char *key,char *value, int size,const char *default_value, const char *file);
 bool WriteProfileString( const char *section, const char *key,const char *value, const char *file);

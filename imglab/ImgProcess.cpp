@@ -70,7 +70,7 @@ IMAGE* ImgProcess::loadImage()
    fp.close();
    return pImg;
 }
-IMAGE* ImgProcess::loadImageArea(int idArea)
+IMAGE* ImgProcess::loadImageArea(int idArea, FecParam* pFec)
 {
     IMAGE* pSrc = loadImage();
     if (!pSrc)
@@ -92,10 +92,9 @@ IMAGE* ImgProcess::loadImageArea(int idArea)
         pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT+ IMAGE_AREA_WIDTH*4;
         break;
     }
-    FecParam fec;
-    LoadFecParam(&fec, idArea);
+
     ApplyFec(pIn, pOut->width, pSrc->stride, pOut->height,
-             pOut->buffer, pOut->stride, &fec);
+             pOut->buffer, pOut->stride, pFec);
     ImgProcess::freeImage(pSrc);
     return pOut;
 }
@@ -185,8 +184,101 @@ void ImgProcess::doFec(double u, double v, double &x, double &y, FecParam* m_pFe
 
 }
 
-int ImgProcess::updateUv(vector <QVector2D> &uv)
+#define IsInRect(x,y, rc) (x>=rc.l && x<rc.r && y>= rc.t && y< rc.b)
+void ImgProcess::genCameraAreaTable(AreaSettings* as, int* cam, int* ft, int xIntv, int yIntv)
 {
+    int offset;
+    int i,j, k,m;
+    double s,t;
+    for (i=0; i<= yIntv; i++) {
+        t = ((double)i)/(double)yIntv;
+        for (j=0; j<=xIntv; j++) {
+            s = ((double)j)/(double)xIntv;
+            offset = i*(xIntv+1)+j;
+            for (m=0; m<MAX_CAMERAS; m++){
+                if(IsInRect(s,t, as[m].range)){
+                    for (k=0; k<MAX_FP_AREA; k++)
+                    {
+                        if (IsInRect(s,t, as[m].region[k]))
+                            break;
+                    }
+                    break;
+                }
+            }
+            if (m != MAX_CAMERAS && k != MAX_FP_AREA){
+                if(m==0&& k==0) {m=3;k=3;}
+                else if (m==1&& k==0) {m=0;k=3;}
+                else if (m==2&& k==0) {m=1;k=3;}
+                else if (m==3&& k==0) {m=2;k=3;}
+
+                cam[offset]=m;
+                ft[offset] = k;
+            } else {//in center?
+                cam[offset]=0;
+                ft[offset] = 0;
+            }
+        }
+    }
+}
+
+int ImgProcess::updateUv(vector <QVector2D> &uv, int xIntv, int yIntv)
+{
+
+    uv.clear();
+#ifdef NO_FEC
+    int i, j;
+    double s,t;
+
+    for (i=0; i<= yIntv; i++) {
+        t = ((double)i)/(double)yIntv;
+        for (j=xIntv; j>=0; j--) {
+            s = ((double)j)/(double)xIntv;
+            uv.push_back(QVector2D(s, t));
+        }
+    }
+#else
+    int i,j, m,k;
+    AreaSettings as[MAX_FP_AREA];
+    for (m=0; m< MAX_CAMERAS; m++) {
+       LoadAreaSettings(&as[m], m);
+       //
+       calculateHomoMatrix(as[m].fps, as[m].fpt, as[m].homo);
+    }
+#define LOOKUP_TABLE(p, x,y,w)   (p[x+y*w])
+    //make camera look-up table
+    int* camera_table = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
+    int* fp_table = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
+    genCameraAreaTable(as, camera_table, fp_table, xIntv, yIntv);
+     double s,t,u,v;
+    double x=0.0,y=0.0;
+    QPointF offset[4]={QPointF(0,0), QPointF(0.5, 0),
+            QPointF(0, 0.5), QPointF(0.5, 0.5)};
+
+
+    for (i=0; i<= yIntv; i++) {
+        t = ((double)i)/(double)yIntv;
+        for (j=0; j<=xIntv; j++) {
+            s = 1-((double)j)/(double)xIntv;
+            m = LOOKUP_TABLE(camera_table,
+                             (xIntv-j),i, (xIntv+1));
+            k = LOOKUP_TABLE(fp_table, (xIntv-j),i, (xIntv+1));
+
+            if (ImgProcess::doHomoTransform(s,t,u,v, as[m].homo[k].h)) {
+                ImgProcess::doFec(u,v,x,y, &as[m].fec);
+                x = x*0.5+ offset[m].x();
+                y = y*0.5+ offset[m].y();
+
+                //
+            }else{
+                x=y=0.5;
+            }
+            //
+            uv.push_back(QVector2D(x, y));
+        }
+    }
+    free(camera_table);
+    free(fp_table);
+#endif
     return 0;
 }
 void ImgProcess::findHomoMatreix(dbPOINT s[4], dbPOINT t[4], double hcoef[3][3])
@@ -244,4 +336,21 @@ bool ImgProcess::doHomoTransform(double s, double t, double &u, double &v, doubl
             return true;
     }
     return false;
+}
+void ImgProcess::calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo)
+{
+    dbPOINT s[MAX_FP_AREA][4] = {{fps[0], fps[1], fps[6], fps[5]},
+                     {fps[1], fps[2], fps[7], fps[6]},
+                     {fps[2], fps[3], fps[8], fps[7]},
+                     {fps[3], fps[4], fps[9], fps[8]}};
+    dbPOINT t[MAX_FP_AREA][4] = {{fpt[0], fpt[1], fpt[6], fpt[5]},
+                     {fpt[1], fpt[2], fpt[7], fpt[6]},
+                     {fpt[2], fpt[3], fpt[8], fpt[7]},
+                     {fpt[3], fpt[4], fpt[9], fpt[8]}};
+
+    for(int i=0; i<MAX_FP_AREA; i++) {
+
+        ImgProcess::findHomoMatreix(s[i],t[i], homo[i].h);
+    }
+
 }

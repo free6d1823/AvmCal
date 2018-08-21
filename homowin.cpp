@@ -3,9 +3,17 @@
 HomoWin::~HomoWin()
 {
     delete ui;
-    if(m_pImgView)
-        delete m_pImgView;
+
 }
+void HomoWin::closeEvent (QCloseEvent *event)
+{
+    QWidget::closeEvent(event);
+    if(m_pImgView){
+        delete m_pImgView;
+        m_pImgView = NULL;
+    }
+}
+
 HomoWin::HomoWin(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::HomoWin)

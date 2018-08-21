@@ -33,7 +33,12 @@ public:
 private slots:
 
     void accept() override;
+    void onArea0Changed(bool value);
+    void onArea1Changed(bool value);
+    void onArea2Changed(bool value);
+    void onArea3Changed(bool value);
     void onAreaIdChanged(int value);
+
     void onShowRulerChanged(int value);
     void onFovValueChanged(double value);
     void onIntricAChanged(double value);

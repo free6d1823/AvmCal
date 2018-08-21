@@ -20,6 +20,7 @@ ImgView::~ImgView()
         ImgProcess::freeImage(m_pImg);
         m_pImg = NULL;
     }
+    printf("ImgView::~ImgView() called\n");
 }
 void ImgView::setImage(IMAGE* pImg)
 {

@@ -20,6 +20,9 @@ bool    LoadFecParam(FecParam* pFecParam, int nArea)
     pFecParam->a = GetProfileDouble(section, "a", 1.0, INIFILE);
     pFecParam->b = GetProfileDouble(section, "b", 1.0, INIFILE);
     pFecParam->c = GetProfileDouble(section, "c", 0.0, INIFILE);
+    pFecParam->pitch = GetProfileDouble(section, "pitch", 0.0, INIFILE);
+    pFecParam->yaw = GetProfileDouble(section, "yaw", 0.0, INIFILE);
+    pFecParam->roll = GetProfileDouble(section, "roll", 0.0, INIFILE);
 
     return true;
 }
@@ -91,6 +94,12 @@ bool    SaveFecParam(FecParam* pFecParam, int nArea)
     if(!WriteProfileDouble(section, "b", pFecParam->b, INIFILE))
         return false;
     if(!WriteProfileDouble(section, "c", pFecParam->c, INIFILE))
+        return false;
+    if(!WriteProfileDouble(section, "pitch", pFecParam->pitch, INIFILE))
+        return false;
+    if(!WriteProfileDouble(section, "yaw", pFecParam->yaw, INIFILE))
+        return false;
+    if(!WriteProfileDouble(section, "roll", pFecParam->roll, INIFILE))
         return false;
     return true;
 }

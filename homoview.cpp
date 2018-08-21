@@ -23,6 +23,7 @@ HomoView::~HomoView()
         ImgProcess::freeImage(m_pImg);
         m_pImg = NULL;
     }
+
 }
 
 void HomoView::HomoTransform()
@@ -75,15 +76,58 @@ void HomoView::setImage(IMAGE* pImg, int nAreaID)
 
 void HomoView::drawAl()
 {
-    AreaSettings as;
-   for (int k=0; k< MAX_CAMERAS; k++) {
-       memset(&as, 0, sizeof(as));
-       LoadAreaSettings(&as, k);
-       //we assume h coeffs are updated
-       //load whole image
-       ImgProcess::loadImage();
-   }
+    //load whole image
+    IMAGE* pIn = ImgProcess::loadImage();
+    QPoint offset[4]={QPoint(0,0), QPoint(pIn->width/2, 0),
+            QPoint(0, pIn->height/2), QPoint(pIn->width/2, pIn->height/2)};
 
+    unsigned char* pSrc = pIn->buffer;
+
+
+    unsigned char* pTar= m_pImg->buffer;
+    for (int m=0; m< MAX_CAMERAS; m++) {
+       AreaSettings as;
+       memset(&as, 0, sizeof(as));
+       LoadAreaSettings(&as, m);
+       ImgProcess::calculateHomoMatrix(as.fps, as.fpt, as.homo);
+       //!we assume h coeffs are updated
+
+       for (int k=0; k< MAX_FP_AREA; k++) {
+           QRect region; //target region
+           region.setLeft((int)(as.region[k].l * OUT_WIDTH));
+           region.setRight((int)(as.region[k].r * OUT_WIDTH));
+           region.setTop((int)(as.region[k].t * OUT_HEIGHT));
+           region.setBottom((int)(as.region[k].b * OUT_HEIGHT));
+           for(int i=region.top();i<region.bottom(); i++) {
+               double t = (double)i/(double)OUT_HEIGHT;
+               for(int j=region.left(); j<region.right(); j++) {
+                   double s = (double)j/(double)OUT_WIDTH; //normalized coordingnates
+                   double u,v;
+
+                   if (ImgProcess::doHomoTransform(s,t,u,v, as.homo[k].h)) {
+                       double x,y; //normalized coord in source image
+                       ImgProcess::doFec(u,v,x,y, &as.fec);
+
+                       int X = (int)(x* (double) pIn->width/2) + offset[m].x();
+                       int Y = (int)(y * (double) pIn->height/2)+ offset[m].y();
+
+                       int offset = Y* pIn->stride + X*4;
+
+                       pTar[i*OUT_STRIDE+j*4]= pSrc[offset];
+                       pTar[i*OUT_STRIDE+j*4+1]= pSrc[offset+1];
+                       pTar[i*OUT_STRIDE+j*4+2]= pSrc[offset+2];
+                       pTar[i*OUT_STRIDE+j*4+3]= pSrc[offset+3];
+                    }else{
+                       pTar[i*OUT_STRIDE+j*4]=pTar[i*OUT_STRIDE+j*4+1]=pTar[i*OUT_STRIDE+j*4+2] = 0;
+                       pTar[i*OUT_STRIDE+j*4+3]=0xff;
+                   }
+
+                }
+           }
+       }//nect region
+   }//next camera
+
+    ImgProcess::freeImage(pIn);
     update();
 }
 
