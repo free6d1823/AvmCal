@@ -238,7 +238,7 @@ int ImgProcess::updateUv(vector <QVector2D> &uv, int xIntv, int yIntv)
     }
 #else
     int i,j, m,k;
-    AreaSettings as[MAX_FP_AREA];
+    AreaSettings as[MAX_CAMERAS];
     for (m=0; m< MAX_CAMERAS; m++) {
        LoadAreaSettings(&as[m], m);
        //
@@ -353,4 +353,139 @@ void ImgProcess::calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo
         ImgProcess::findHomoMatreix(s[i],t[i], homo[i].h);
     }
 
+}
+/////////////////////////////////////
+/// \brief s_offsetCam each camera position in video frame
+QPointF TexProcess::s_offsetCam[MAX_CAMERAS]={QPointF(0,0), QPointF(0.5, 0),
+                          QPointF(0, 0.5), QPointF(0.5, 0.5)};
+
+TexProcess::TexProcess():
+
+{
+    m_xIntv = 0;
+    m_yIntv = 0;
+    m_camTable = NULL;
+    m_fpTable  = NULL;
+
+}
+/////////////
+/// \brief TexProcess::init call init if AreaSettings has changed
+/// \param xIntv horizontal intervals numbers
+/// \param yIntv vertical interval numbers
+/// \return false if any error
+///
+bool TexProcess::init(int xIntv, int yIntv)
+{
+    if(xIntv!= m_xIntv || yIntv != m_yIntv ){
+        if(m_camTable) free(m_camTable);
+        m_camTable = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
+        if(m_fpTable) free(m_fpTable);
+        m_fpTable  = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
+    }
+    for (int m=0; m< MAX_CAMERAS; m++) {
+       LoadAreaSettings(&m_as[m], m);
+       ImgProcess::calculateHomoMatrix(m_as[m].fps, m_as[m].fpt, m_as[m].homo);
+    }
+
+    return true;
+}
+
+TexProcess::~TexProcess()
+{
+    if(m_camTable)
+        free(m_camTable);
+    if(m_fpTable)
+        free(m_fpTable);
+}
+
+int TexProcess::updateUv(vector <QVector2D> &uv)
+{
+    uv.clear();
+#ifdef NO_FEC
+    int i, j;
+    double s,t;
+
+    for (i=0; i<= yIntv; i++) {
+        t = ((double)i)/(double)yIntv;
+        for (j=xIntv; j>=0; j--) {
+            s = ((double)j)/(double)xIntv;
+            uv.push_back(QVector2D(s, t));
+        }
+    }
+#else
+    int i,j, m,k;
+#define LOOKUP_TABLE(p, x,y,w)   (p[x+y*w])
+    double s,t,u,v;
+    double x=0.0,y=0.0;
+
+    for (i=0; i<= m_yIntv; i++) {
+        t = ((double)i)/(double)m_yIntv;
+        for (j=0; j<=xIntv; j++) {
+            s = 1-((double)j)/(double)m_xIntv;
+            m = LOOKUP_TABLE(m_camTable,
+                             (m_xIntv-j),i, (m_xIntv+1));
+            k = LOOKUP_TABLE(m_fpTable, (m_xIntv-j),i, (m_xIntv+1));
+
+            if (ImgProcess::doHomoTransform(s,t,u,v, m_as[m].homo[k].h)) {
+                ImgProcess::doFec(u,v,x,y, &m_as[m].fec);
+                x = x*0.5+ offset[m].x();
+                y = y*0.5+ offset[m].y();
+
+                //
+            }else{
+                x=y=0.5;
+            }
+            //
+            uv.push_back(QVector2D(x, y));
+        }
+    }
+#endif
+    return 0;
+}
+//////////
+/// \brief TexProcess::genCameraAreaTable
+///
+void TexProcess::genCameraAreaTable()
+{
+    int offset;
+    int i,j, k,m;
+    double s,t;
+    for (i=0; i<= m_yIntv; i++) {
+        t = ((double)i)/(double)m_yIntv;
+        for (j=0; j<=m_xIntv; j++) {
+            s = ((double)j)/(double)m_xIntv;
+            offset = i*(m_xIntv+1)+j;
+            for (m=0; m<MAX_CAMERAS; m++){
+                if(IsInRect(s,t, m_as[m].range)){
+                    for (k=0; k<MAX_FP_AREA; k++)
+                    {
+                        if (IsInRect(s,t, m_as[m].region[k]))
+                            break;
+                    }
+                    break;
+                }
+            }
+            if (m != MAX_CAMERAS && k != MAX_FP_AREA){
+                if(m==0&& k==0) {m=3;k=3;}
+                else if (m==1&& k==0) {m=0;k=3;}
+                else if (m==2&& k==0) {m=1;k=3;}
+                else if (m==3&& k==0) {m=2;k=3;}
+
+                m_camTable[offset]=m;
+                m_fpTable[offset] = k;
+            } else {//in center?
+                m_camTable[offset]=0;
+                m_fpTable[offset] = 0;
+            }
+        }
+    }
+}
+////////////////
+/// \brief TexProcess::saveTable save uv location to table
+/// \param path
+/// \return
+///
+bool TexProcess::saveTable(const char* path)
+{
+    return true;
 }

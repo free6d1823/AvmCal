@@ -39,4 +39,22 @@ static    void genCameraAreaTable(AreaSettings* as, int* cam, int* ft, int xIntv
 
 };
 
+class TexProcess
+{
+public:
+    TexProcess();
+    ~TexProcess();
+    bool init(int xIntv, int yIntv);
+    int updateUv(vector <QVector2D> &uv);
+    bool saveTable(const char* path);
+private:
+    void genCameraAreaTable();
+    AreaSettings m_as[MAX_CAMERAS];
+static   QPointF s_offsetCam[MAX_CAMERAS];
+    int*    m_camTable; /*!<uv position index to camera area table*/
+    int*    m_fpTable;  /*!<uv position index to feature-points table */
+    int m_xIntv;
+    int m_yIntv;
+}
+
 #endif // ImgProcess_H
