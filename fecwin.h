@@ -29,6 +29,7 @@ public:
     void UpdateFeaturePoints(bool fromImgView);
     void SaveFeaturePoints();
     void CalculateHomoMatrix();
+    void closeEvent(QCloseEvent *event);
     ~FecWin();
 private slots:
 

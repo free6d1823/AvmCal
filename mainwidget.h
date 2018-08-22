@@ -32,6 +32,8 @@ protected:
     void CreateMenus();
 private slots:
     void onShowFecDialog();
+    void onUpdateUv();
+    void onRedraw();
 
 private:
     QMatrix4x4 m_matProj;

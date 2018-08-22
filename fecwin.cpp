@@ -9,7 +9,6 @@
 #define RADIAN_TO_DEGREE(r) (r*180.0/PI)
 #define DEGREE_TO_RADIAN(d) (d*PI/180.0)
 
-void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst);
 ImgProcess gImgEngine;
 FecWin* gFecWin = NULL;
 FecWin::FecWin(QWidget *parent) :
@@ -125,18 +124,24 @@ void FecWin::ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
 
 FecWin::~FecWin()
 {
-    if(m_pHomoWin)
+    delete ui;
+
+
+}
+void FecWin::closeEvent(QCloseEvent *event)
+{
+    if(m_pHomoWin){
         m_pHomoWin->close();
+    }
     if(m_pFecToolDlg)
         m_pFecToolDlg->close();
-    delete ui;
     if(m_pImgView){
 
         delete m_pImgView;
         m_pImgView = NULL;
     }
-
 }
+
 void FecWin::UpdateUI()
 {
     ui->spinFov->setValue(RADIAN_TO_DEGREE(m_pFecParam->fov));

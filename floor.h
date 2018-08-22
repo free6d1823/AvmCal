@@ -28,6 +28,15 @@ public:
      */
     void transform(QMatrix4x4& transform);
 
+    ////
+    /// \brief UpdateUv reload m_arrayTexBuf, called when Calibration modifis FEC parameters
+    ///
+    void UpdateUv();
+
+    ////
+    /// \brief UpdateIndices reload m_indexBuf, called if region display polocy has changed
+    ///
+    void UpdateIndices();
 protected:
     void CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs, vector<unsigned short>& indices);
     void init();

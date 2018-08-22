@@ -264,102 +264,7 @@ void ImgProcess::doFec(double u, double v, double &x, double &y, FecParam* m_pFe
 }
 
 #define IsInRect(x,y, rc) (x>=rc.l && x<rc.r && y>= rc.t && y< rc.b)
-void ImgProcess::genCameraAreaTable(AreaSettings* as, int* cam, int* ft, int xIntv, int yIntv)
-{
-    int offset;
-    int i,j, k,m;
-    double s,t;
-    for (i=0; i<= yIntv; i++) {
-        t = ((double)i)/(double)yIntv;
-        for (j=0; j<=xIntv; j++) {
-            s = ((double)j)/(double)xIntv;
-            offset = i*(xIntv+1)+j;
-            for (m=0; m<MAX_CAMERAS; m++){
-                if(IsInRect(s,t, as[m].range)){
-                    for (k=0; k<MAX_FP_AREA; k++)
-                    {
-                        if (IsInRect(s,t, as[m].region[k]))
-                            break;
-                    }
-                    break;
-                }
-            }
-            if (m != MAX_CAMERAS && k != MAX_FP_AREA){
-                if(m==0&& k==0) {m=3;k=3;}
-                else if (m==1&& k==0) {m=0;k=3;}
-                else if (m==2&& k==0) {m=1;k=3;}
-                else if (m==3&& k==0) {m=2;k=3;}
 
-                cam[offset]=m;
-                ft[offset] = k;
-            } else {//in center?
-                cam[offset]=0;
-                ft[offset] = 0;
-            }
-        }
-    }
-}
-
-int ImgProcess::updateUv(vector <QVector2D> &uv, int xIntv, int yIntv)
-{
-
-    uv.clear();
-#ifdef NO_FEC
-    int i, j;
-    double s,t;
-
-    for (i=0; i<= yIntv; i++) {
-        t = ((double)i)/(double)yIntv;
-        for (j=xIntv; j>=0; j--) {
-            s = ((double)j)/(double)xIntv;
-            uv.push_back(QVector2D(s, t));
-        }
-    }
-#else
-    int i,j, m,k;
-    AreaSettings as[MAX_CAMERAS];
-    for (m=0; m< MAX_CAMERAS; m++) {
-       LoadAreaSettings(&as[m], m);
-       //
-       calculateHomoMatrix(as[m].fps, as[m].fpt, as[m].homo);
-    }
-#define LOOKUP_TABLE(p, x,y,w)   (p[x+y*w])
-    //make camera look-up table
-    int* camera_table = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
-    int* fp_table = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
-    genCameraAreaTable(as, camera_table, fp_table, xIntv, yIntv);
-     double s,t,u,v;
-    double x=0.0,y=0.0;
-    QPointF offset[4]={QPointF(0,0), QPointF(0.5, 0),
-            QPointF(0, 0.5), QPointF(0.5, 0.5)};
-
-
-    for (i=0; i<= yIntv; i++) {
-        t = ((double)i)/(double)yIntv;
-        for (j=0; j<=xIntv; j++) {
-            s = 1-((double)j)/(double)xIntv;
-            m = LOOKUP_TABLE(camera_table,
-                             (xIntv-j),i, (xIntv+1));
-            k = LOOKUP_TABLE(fp_table, (xIntv-j),i, (xIntv+1));
-
-            if (ImgProcess::doHomoTransform(s,t,u,v, as[m].homo[k].h)) {
-                ImgProcess::doFec(u,v,x,y, &as[m].fec);
-                x = x*0.5+ offset[m].x();
-                y = y*0.5+ offset[m].y();
-
-                //
-            }else{
-                x=y=0.5;
-            }
-            //
-            uv.push_back(QVector2D(x, y));
-        }
-    }
-    free(camera_table);
-    free(fp_table);
-#endif
-    return 0;
-}
 void ImgProcess::findHomoMatreix(dbPOINT s[4], dbPOINT t[4], double hcoef[3][3])
 {
     int i;
@@ -435,17 +340,18 @@ void ImgProcess::calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo
 }
 /////////////////////////////////////
 /// \brief s_offsetCam each camera position in video frame
+/// |-------|------|
+/// | front | right|
+/// |-------|------|
+/// | rear  | left |
+/// |-------|------|
+///
 QPointF TexProcess::s_offsetCam[MAX_CAMERAS]={QPointF(0,0), QPointF(0.5, 0),
                           QPointF(0, 0.5), QPointF(0.5, 0.5)};
 
 TexProcess::TexProcess()
 
 {
-    m_xIntv = 0;
-    m_yIntv = 0;
-    m_camTable = NULL;
-    m_fpTable  = NULL;
-
 }
 /////////////
 /// \brief TexProcess::init call init if AreaSettings has changed
@@ -453,23 +359,18 @@ TexProcess::TexProcess()
 /// \param yIntv vertical interval numbers
 /// \return false if any error
 ///
-bool TexProcess::init(int xIntv, int yIntv)
+bool TexProcess::init()
 {
     for (int m=0; m< MAX_CAMERAS; m++) {
        LoadAreaSettings(&m_as[m], m);
        ImgProcess::calculateHomoMatrix(m_as[m].fps, m_as[m].fpt, m_as[m].homo);
+       for(int k=0; k<MAX_FP_AREA; k++) {
+           if(k==0)
+               m_RegionMap[m][k] = 0;
+           else
+               m_RegionMap[m][k] = 1;
+       }
     }
-
-    if(xIntv!= m_xIntv || yIntv != m_yIntv ){
-        m_xIntv = xIntv;
-        m_yIntv = yIntv;
-        if(m_camTable) free(m_camTable);
-        m_camTable = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
-        if(m_fpTable) free(m_fpTable);    
-        m_fpTable  = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
-        genCameraAreaTable();
-    }
-
 
 
     return true;
@@ -477,136 +378,132 @@ bool TexProcess::init(int xIntv, int yIntv)
 
 TexProcess::~TexProcess()
 {
-    if(m_camTable)
-        free(m_camTable);
-    if(m_fpTable)
-        free(m_fpTable);
+
 }
+///////
+/// \brief Texture position in 3D world coordinates, the x-z plan
 #define TX_SCALEUP    20
 #define TX_CENTER      10
 #define TZ_SCALEUP    20
 #define TZ_CENTER      10
-int TexProcess::createVertices(vector<QVector3D> & vert, vector<unsigned short>& indices)
+
+#define X_INTV  16
+#define Y_INTV  16
+
+void TexProcess::initVertices(vector<QVector3D> & vert, dbRECT region)
 {
-    int i, j;
-    float diffy = 1.0f/(m_yIntv);
-    float diffx = 1.0f/(m_xIntv);
-    for (i=0; i<= m_yIntv; i++) {
-        for (j=0; j<=m_xIntv; j++) {
-            vert.push_back(QVector3D(j*diffx*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-i*diffy*TZ_SCALEUP));
+    int i,j;
+    float s,t;
+    for (i=0; i<= Y_INTV; i++) {
+        t = (region.b - region.t)*(float)i/(float)Y_INTV + region.t;
+        for (j=0; j<=X_INTV; j++) {
+            s = (region.r - region.l)*(float)j/(float)X_INTV + region.l;
+#ifdef HORZ_MIRROR
+            vert.push_back(QVector3D(s*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-t*TZ_SCALEUP));
+#else
+            vert.push_back(QVector3D((1-s)*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-t*TZ_SCALEUP));
+#endif
+        }
+    }
+}
+int g_show = 0;
+int TexProcess::reloadIndices(vector<unsigned short>& indices)
+{
+    int m,k;
+    indices.clear();
+//simulate indices changed
+    for (m=0; m< MAX_CAMERAS; m++) {
+        for(k=0; k<MAX_FP_AREA; k++) {
+            if(k==0)
+                m_RegionMap[m][k] = 1-g_show;
+            else if(k==MAX_FP_AREA-1)
+                m_RegionMap[m][k] = g_show;
+
 
         }
     }
+    g_show = 1-g_show;
+//end of simulation
 
-    int k;
-    for (i=0; i< m_yIntv; i++) {
-        k = i*(m_xIntv+1);
-        for(j=0; j<m_xIntv; j++) {
+    for(m=0; m< MAX_CAMERAS; m++){
+        for (k=0; k<MAX_FP_AREA; k++){
+            if(m_RegionMap[m][k] != 0)
+                updateIndices(indices, m, k);
+        }
+    }
+    return 0;
+}
+
+void TexProcess::updateIndices(vector<unsigned short>& indices, int nCam, int nRegion)
+{
+    int i, j,k;
+    int startIndex = (nCam*MAX_FP_AREA + nRegion)*(Y_INTV+1)*(X_INTV+1);
+    for (i=0; i< Y_INTV; i++) {
+        k = startIndex + i*(X_INTV+1);
+        for(j=0; j<X_INTV; j++) {
+#ifdef HORZ_MIRROR
             indices.push_back(k);
             indices.push_back(k+1);
-            indices.push_back(k+m_xIntv+1);
-            indices.push_back(k+m_xIntv+1);
+            indices.push_back(k+X_INTV+1);
+            indices.push_back(k+X_INTV+1);
             indices.push_back(k+1);
-            indices.push_back(k+m_xIntv+2);
-
+            indices.push_back(k+X_INTV+2);
+#else
+            indices.push_back(k);
+            indices.push_back(k+X_INTV+1);
+            indices.push_back(k+1);
+            indices.push_back(k+1);
+            indices.push_back(k+X_INTV+1);
+            indices.push_back(k+X_INTV+2);
+#endif
             k++;
         }
     }
-    return 0;
 }
 
+int TexProcess::createVertices(vector<QVector3D> & vert, vector<unsigned short>& indices)
+{
+    int m,k;
+    vert.clear();
+    indices.clear();
+    for(m=0; m< MAX_CAMERAS; m++){
+        for (k=0; k<MAX_FP_AREA; k++){
+            initVertices(vert, m_as[m].region[k]);
+            if(m_RegionMap[m][k] != 0)
+                updateIndices(indices, m, k);
+        }
+    }
+    return 0;
+}
 int TexProcess::updateUv(vector <QVector2D> &uv)
 {
+    int m,k,i,j;
     uv.clear();
-#ifdef NO_FEC
-    int i, j;
-    double s,t;
+    for(m=0; m< MAX_CAMERAS; m++){
+        for (k=0; k<MAX_FP_AREA; k++){
+            ////---- update UV in the region  m_as[m].region[k]);
+            double s,t,u,v,x,y;
+            dbRECT region = m_as[m].region[k];
+            for (i=0; i<= Y_INTV; i++) {
+                t = (region.b - region.t)*(double)i/(double)Y_INTV + region.t;
+                for (j=0; j<=X_INTV; j++) {
+                    s = (region.r - region.l)*(double)j/(double)X_INTV + region.l;
+                    if (ImgProcess::doHomoTransform(s,t,u,v, m_as[m].homo[k].h)) {
+                        ImgProcess::doFec(u,v,x,y, &m_as[m].fec);
+                        x = (x*0.5+ s_offsetCam[m].x());
+                        y = y*0.5+ s_offsetCam[m].y();
 
-    for (i=0; i<= yIntv; i++) {
-        t = ((double)i)/(double)yIntv;
-        for (j=xIntv; j>=0; j--) {
-            s = ((double)j)/(double)xIntv;
-            uv.push_back(QVector2D(s, t));
-        }
-    }
-#else
-    int i,j, m,k;
-#define LOOKUP_TABLE(p, x,y,w)   (p[x+y*w])
-    double s,t,u,v;
-    double x=0.0,y=0.0;
-
-    for (i=0; i<= m_yIntv; i++) {
-        t = ((double)i)/(double)m_yIntv;
-        for (j=0; j<=m_xIntv; j++) {
-            s = 1-((double)j)/(double)m_xIntv;
-            m = LOOKUP_TABLE(m_camTable,
-                             (m_xIntv-j),i, (m_xIntv+1));
-            k = LOOKUP_TABLE(m_fpTable, (m_xIntv-j),i, (m_xIntv+1));
-
-            if (ImgProcess::doHomoTransform(s,t,u,v, m_as[m].homo[k].h)) {
-                ImgProcess::doFec(u,v,x,y, &m_as[m].fec);
-                x = x*0.5+ s_offsetCam[m].x();
-                y = y*0.5+ s_offsetCam[m].y();
-
-                //
-            }else{
-                x=y=0.5;
-            }
-            //
-            uv.push_back(QVector2D(x, y));
-        }
-    }
-#endif
-    return 0;
-}
-//////////
-/// \brief TexProcess::genCameraAreaTable
-///
-void TexProcess::genCameraAreaTable()
-{
-    int offset;
-    int i,j, k,m;
-    double s,t;
-    for (i=0; i<= m_yIntv; i++) {
-        t = ((double)i)/(double)m_yIntv;
-        for (j=0; j<=m_xIntv; j++) {
-            s = ((double)j)/(double)m_xIntv;
-            offset = i*(m_xIntv+1)+j;
-            for (m=0; m<MAX_CAMERAS; m++){
-                if(IsInRect(s,t, m_as[m].range)){
-                    for (k=0; k<MAX_FP_AREA; k++)
-                    {
-                        if (IsInRect(s,t, m_as[m].region[k]))
-                            break;
+                        //
+                    }else{
+                        x=y=0.5;
                     }
-                    break;
+                    //
+                    uv.push_back(QVector2D(x, y));
                 }
             }
-            if (m != MAX_CAMERAS && k != MAX_FP_AREA){
-                if(m==0&& k==0) {m=3;k=3;}
-                else if (m==1&& k==0) {m=0;k=3;}
-                else if (m==2&& k==0) {m=1;k=3;}
-                else if (m==3&& k==0) {m=2;k=3;}
-
-                m_camTable[offset]=m;
-                m_fpTable[offset] = k;
-            } else {//in center?
-                m_camTable[offset]=0;
-                m_fpTable[offset] = 0;
-            }
+            ////---- end of one region
         }
     }
-}
-////////////////
-/// \brief TexProcess::saveTexture save uv location to table
-/// \param path
-/// \return
-///
-bool TexProcess::saveTexture(const char* path)
-{
-    return true;
-}
-bool TexProcess::loadTexture(const char* path)
-{
-    return true;
+
+    return 0;
 }

@@ -32,8 +32,19 @@ void MainWidget::CreateMenus()
     newAct->setStatusTip(tr("FEC calibrations"));
     connect(newAct, SIGNAL(triggered()), SLOT(onShowFecDialog()));
 
+    QAction* updateAct = new QAction(tr("&Update UV"), this);
+    updateAct->setStatusTip(tr("reload UV"));
+    connect(updateAct, SIGNAL(triggered()), SLOT(onUpdateUv()));
+
+    QAction* redrawAct = new QAction(tr("&Update Index"), this);
+    redrawAct->setStatusTip(tr("reload indices"));
+    connect(redrawAct, SIGNAL(triggered()), SLOT(onRedraw()));
+
+
     QMenu* fileMenu = menuBar->addMenu(tr("&File"));
     fileMenu->addAction(newAct);
+    fileMenu->addAction(updateAct);
+    fileMenu->addAction(redrawAct);
     //layout()->setMenuBar(menuBar);
     boxLayout->addWidget(menuBar);
 }
@@ -129,4 +140,15 @@ void MainWidget::onShowFecDialog()
     FecWin* pDlg = new FecWin;
     pDlg->exec();
 
+}
+void MainWidget::onUpdateUv()
+{
+    m_pFloor->UpdateUv();
+    update();
+}
+
+void MainWidget::onRedraw()
+{
+    m_pFloor->UpdateIndices();
+    update();
 }

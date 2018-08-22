@@ -34,11 +34,8 @@ static IMAGE* loadImageArea(int idArea, FecParam* pFec);
 static void ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
                         unsigned char* pTar, int outStride, FecParam* pFec);
 
-static  int updateUv(vector <QVector2D> &uv, int xIntv, int yIntv);
     /*!<S= HT, S=source, T=target on stitched view */
 static void findHomoMatreix(dbPOINT s[4], dbPOINT t[4], double hcoef[3][3]);
-private:
-static    void genCameraAreaTable(AreaSettings* as, int* cam, int* ft, int xIntv, int yIntv);
 
 };
 
@@ -47,19 +44,20 @@ class TexProcess
 public:
     TexProcess();
     ~TexProcess();
-    bool init(int xIntv, int yIntv);
+    bool init();
     int createVertices(vector<QVector3D> & vert, vector<unsigned short>& indices);
     int updateUv(vector <QVector2D> &uv);
-    bool saveTexture(const char* path);
-    bool loadTexture(const char* path);
+    int reloadIndices(vector<unsigned short>& indices);
+
 private:
-    void genCameraAreaTable();
+    void initVertices(vector<QVector3D> & vert, dbRECT region);
+    void updateIndices(vector<unsigned short>& indices, int nCam, int nRegion);
     AreaSettings m_as[MAX_CAMERAS];
 static   QPointF s_offsetCam[MAX_CAMERAS];
-    int*    m_camTable; /*!<uv position index to camera area table*/
-    int*    m_fpTable;  /*!<uv position index to feature-points table */
-    int m_xIntv;
-    int m_yIntv;
+    ///
+    /// \brief m_RegionMap indicates the region should be shown or hiden
+    ///        0 for hidden
+    int m_RegionMap[MAX_CAMERAS][MAX_FP_AREA];
 };
 
 #endif // ImgProcess_H

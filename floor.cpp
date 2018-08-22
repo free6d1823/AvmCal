@@ -106,12 +106,11 @@ bool Floor::initTextures()
 
     return true;
 }
-#define MAX_GRIDES   100
 
 void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
                                vector<unsigned short>& indices)
 {
-    texProcess.init(MAX_GRIDES, MAX_GRIDES);
+    texProcess.init();
     texProcess.createVertices(vert, indices);
     texProcess.updateUv(uvs);
 }
@@ -196,3 +195,33 @@ void Floor::draw(bool bReload )
     m_program.release();
 }
 
+////
+/// \brief UpdateUv reload m_arrayTexBuf, called when Calibration modifis FEC parameters
+///
+void Floor::UpdateUv()
+{
+    vector<QVector2D> uvs;
+    m_arrayTexBuf.release();
+    m_arrayTexBuf.destroy();
+    m_arrayTexBuf.create();
+    m_arrayTexBuf.bind();
+    texProcess.init();
+    texProcess.updateUv(uvs);
+    m_arrayTexBuf.allocate(&uvs[0], uvs.size() * sizeof(QVector2D));
+
+
+}
+
+////
+/// \brief UpdateIndices reload m_indexBuf, called if region display polocy has changed
+///
+void Floor::UpdateIndices()
+{
+    vector<unsigned short> indices;
+    m_indexBuf.release();
+    m_indexBuf.destroy();
+    m_indexBuf.create();
+    m_indexBuf.bind();
+    texProcess.reloadIndices(indices);
+    m_indexBuf.allocate(&indices[0], indices.size() * sizeof(unsigned short));
+}
