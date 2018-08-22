@@ -2,73 +2,10 @@
 #include <QFile>
 /* exclude these lines when merge to floo.cpp of navm  */
 #define IN_AVMCAL
-#ifdef IN_AVMCAL
 #include "./imglab/ImgProcess.h"
-extern ImgProcess* gpImgProcess[MAX_CAMERAS];
-#endif //IN_AVMCAL
 /* exclude these lines when merge to floo.cpp of navm  */
 
-
-
-#define CLIP(X) ( (X) > 255 ? 255 : (X) < 0 ? 0 : X)
-
-
-// YUV -> RGB
-#define C(Y) ( (Y) - 16  )
-#define D(U) ( (U) - 128 )
-#define E(V) ( (V) - 128 )
-
-#define YUV2R(Y, U, V) CLIP(( 298 * C(Y)              + 409 * E(V) + 128) >> 8)
-#define YUV2G(Y, U, V) CLIP(( 298 * C(Y) - 100 * D(U) - 208 * E(V) + 128) >> 8)
-#define YUV2B(Y, U, V) CLIP(( 298 * C(Y) + 516 * D(U)              + 128) >> 8)
-
-
-void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst)
-{
-    //YVYU - format
-    int nBps = width*4;
-    unsigned char* pY1 = pYuv;
-
-    unsigned char* pV;
-    unsigned char* pU;
-
-    if (uFirst) {
-        pU = pY1+1; pV = pU+2;
-    } else {
-        pV = pY1+1; pU = pV+2;
-    }
-
-
-    unsigned char* pLine1 = pRgb;
-
-    unsigned char y1,u,v;
-    for (int i=0; i<height; i++)
-    {
-        for (int j=0; j<width; j+=2)
-        {
-            y1 = pY1[2*j];
-            u = pU[2*j];
-            v = pV[2*j];
-            pLine1[j*4] = YUV2B(y1, u, v);//b
-            pLine1[j*4+1] = YUV2G(y1, u, v);//g
-            pLine1[j*4+2] = YUV2R(y1, u, v);//r
-            pLine1[j*4+3] = 0xff;
-
-            y1 = pY1[2*j+2];
-            pLine1[j*4+4] = YUV2B(y1, u, v);//b
-            pLine1[j*4+5] = YUV2G(y1, u, v);//g
-            pLine1[j*4+6] = YUV2R(y1, u, v);//r
-            pLine1[j*4+7] = 0xff;
-        }
-        pY1 += stride;
-        pV += stride;
-        pU += stride;
-        pLine1 += nBps;
-
-    }
-}
-
-unsigned char* m_pData = NULL;
+IMAGE* m_pImage = NULL;
 bool Return_Error(const char* reason)
 {
     perror(reason);
@@ -98,9 +35,9 @@ Floor::~Floor()
         m_texture = NULL;
     }
 
-    if(m_pData) {
-        free(m_pData);
-        m_pData = NULL;
+    if(m_pImage) {
+        ImgProcess::freeImage(m_pImage);
+        m_pImage = NULL;
 
     }
 }
@@ -136,30 +73,25 @@ bool Floor::initShaders()
 bool Floor::initTextures()
 {
 
-    int width;
-    int height;
 #ifdef IN_AVMCAL
-    width = 1800;
-    height = 1440;
-    if (!m_pData) {
-            m_pData = (unsigned char*) malloc(width*height*4);
+    if (!m_pImage) {
+        m_pImage = ImgProcess::initImage(1800,1440);
             QFile fp(":/camera1800x1440.yuv");
             if(!fp.open(QIODevice::ReadOnly))
                     return false;
 
-            char* pSrc = (char*) malloc(width*2*height);
-            fp.read(pSrc, height*width*2);
+            char* pSrc = (char*) malloc(m_pImage->width*2*m_pImage->height);
+            fp.read(pSrc, m_pImage->width*2*m_pImage->height);
             fp.close();
-            YuyvToRgb32((unsigned char*) pSrc, width, width*2, height, m_pData, true);
+            ImgProcess::YuyvToRgb32((unsigned char*) pSrc, m_pImage->width,
+                                    m_pImage->width*2, m_pImage->height, m_pImage->buffer, true);
             free(pSrc);
     }
 #else
-    m_pData = m_pVs->GetFrameData();
-    width = m_pVs->Width();
-    height = m_pVs->Height();
+    m_pImage = ImgProcess::refImage(m_pVs->GetFrameData(),m_pVs->Width(),m_pVs->Height());
 #endif
-    m_texture = new QOpenGLTexture(QImage(m_pData, width,
-                height, QImage::Format_RGBA8888) );
+    m_texture = new QOpenGLTexture(QImage(m_pImage->buffer,
+            m_pImage->width, m_pImage->height, QImage::Format_RGBA8888) );
 
     // Set nearest filtering mode for texture minification
     m_texture->setMinificationFilter(QOpenGLTexture::Nearest);

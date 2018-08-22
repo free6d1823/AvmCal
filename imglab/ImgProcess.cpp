@@ -20,6 +20,71 @@ ImgProcess::~ImgProcess()
 {
 }
 
+#define CLIP(X) ( (X) > 255 ? 255 : (X) < 0 ? 0 : X)
+
+
+// YUV -> RGB
+#define C(Y) ( (Y) - 16  )
+#define D(U) ( (U) - 128 )
+#define E(V) ( (V) - 128 )
+
+#define YUV2R(Y, U, V) CLIP(( 298 * C(Y)              + 409 * E(V) + 128) >> 8)
+#define YUV2G(Y, U, V) CLIP(( 298 * C(Y) - 100 * D(U) - 208 * E(V) + 128) >> 8)
+#define YUV2B(Y, U, V) CLIP(( 298 * C(Y) + 516 * D(U)              + 128) >> 8)
+
+//////
+/// \brief ImgProcess::YuyvToRgb32 YUV420 to RGBA 32
+/// \param pYuv
+/// \param width
+/// \param stride
+/// \param height
+/// \param pRgb     output RGB32 buffer
+/// \param uFirst   true if pYuv is YUYV, false if YVYU
+///
+void ImgProcess::YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst)
+{
+    //YVYU - format
+    int nBps = width*4;
+    unsigned char* pY1 = pYuv;
+
+    unsigned char* pV;
+    unsigned char* pU;
+
+    if (uFirst) {
+        pU = pY1+1; pV = pU+2;
+    } else {
+        pV = pY1+1; pU = pV+2;
+    }
+
+
+    unsigned char* pLine1 = pRgb;
+
+    unsigned char y1,u,v;
+    for (int i=0; i<height; i++)
+    {
+        for (int j=0; j<width; j+=2)
+        {
+            y1 = pY1[2*j];
+            u = pU[2*j];
+            v = pV[2*j];
+            pLine1[j*4] = YUV2B(y1, u, v);//b
+            pLine1[j*4+1] = YUV2G(y1, u, v);//g
+            pLine1[j*4+2] = YUV2R(y1, u, v);//r
+            pLine1[j*4+3] = 0xff;
+
+            y1 = pY1[2*j+2];
+            pLine1[j*4+4] = YUV2B(y1, u, v);//b
+            pLine1[j*4+5] = YUV2G(y1, u, v);//g
+            pLine1[j*4+6] = YUV2R(y1, u, v);//r
+            pLine1[j*4+7] = 0xff;
+        }
+        pY1 += stride;
+        pV += stride;
+        pU += stride;
+        pLine1 += nBps;
+
+    }
+}
 static int seq=0;
 IMAGE* ImgProcess::initImage(int w, int h)
 {
@@ -32,9 +97,22 @@ IMAGE* ImgProcess::initImage(int w, int h)
     img->width = w;
     img->stride = w*4;
     img->height = h;
-
+    img->bRef = false;
     printf ("ImgProcess::initImage#%d (%dx%d)\n", img->seq, w, h);
-
+    return img;
+}
+IMAGE* ImgProcess::refImage(unsigned char* data, int w, int h)
+{
+    IMAGE* img = (IMAGE*)malloc(sizeof(IMAGE) );
+    if (!img)
+        return img;
+    img->seq = ++seq;
+    img->buffer = data;
+    img->width = w;
+    img->stride = w*4;
+    img->height = h;
+    img->bRef = true;
+    printf ("ImgProcess::initImage#%d (%dx%d)\n", img->seq, w, h);
     return img;
 }
 
@@ -43,7 +121,7 @@ void ImgProcess::freeImage(IMAGE* pImage)
     if(pImage) {
 printf("ImgProcess::freeImage,#%d - %dx%d\n", pImage->seq, pImage->width,
        pImage->height);
-        if(pImage->buffer) free(pImage->buffer);
+        if(!pImage->bRef && pImage->buffer) free(pImage->buffer);
         free(pImage);//include freeing pImge->buffer
     }
 }
@@ -359,7 +437,7 @@ void ImgProcess::calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo
 QPointF TexProcess::s_offsetCam[MAX_CAMERAS]={QPointF(0,0), QPointF(0.5, 0),
                           QPointF(0, 0.5), QPointF(0.5, 0.5)};
 
-TexProcess::TexProcess():
+TexProcess::TexProcess()
 
 {
     m_xIntv = 0;
@@ -420,7 +498,7 @@ int TexProcess::updateUv(vector <QVector2D> &uv)
 
     for (i=0; i<= m_yIntv; i++) {
         t = ((double)i)/(double)m_yIntv;
-        for (j=0; j<=xIntv; j++) {
+        for (j=0; j<=m_xIntv; j++) {
             s = 1-((double)j)/(double)m_xIntv;
             m = LOOKUP_TABLE(m_camTable,
                              (m_xIntv-j),i, (m_xIntv+1));
@@ -428,8 +506,8 @@ int TexProcess::updateUv(vector <QVector2D> &uv)
 
             if (ImgProcess::doHomoTransform(s,t,u,v, m_as[m].homo[k].h)) {
                 ImgProcess::doFec(u,v,x,y, &m_as[m].fec);
-                x = x*0.5+ offset[m].x();
-                y = y*0.5+ offset[m].y();
+                x = x*0.5+ s_offsetCam[m].x();
+                y = y*0.5+ s_offsetCam[m].y();
 
                 //
             }else{
