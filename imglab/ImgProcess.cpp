@@ -1,6 +1,7 @@
 #include "ImgProcess.h"
 #include "Mat.h"
 #include <QFile>
+#include <QVector3D>
 
 #define PI_2    (3.1415967*2.0)
 #define IMAGE_PATH  ":/camera1800x1440.yuv"
@@ -454,16 +455,22 @@ TexProcess::TexProcess()
 ///
 bool TexProcess::init(int xIntv, int yIntv)
 {
-    if(xIntv!= m_xIntv || yIntv != m_yIntv ){
-        if(m_camTable) free(m_camTable);
-        m_camTable = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
-        if(m_fpTable) free(m_fpTable);
-        m_fpTable  = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
-    }
     for (int m=0; m< MAX_CAMERAS; m++) {
        LoadAreaSettings(&m_as[m], m);
        ImgProcess::calculateHomoMatrix(m_as[m].fps, m_as[m].fpt, m_as[m].homo);
     }
+
+    if(xIntv!= m_xIntv || yIntv != m_yIntv ){
+        m_xIntv = xIntv;
+        m_yIntv = yIntv;
+        if(m_camTable) free(m_camTable);
+        m_camTable = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
+        if(m_fpTable) free(m_fpTable);    
+        m_fpTable  = (int*) malloc((xIntv+1)*(yIntv+1)*sizeof(int));
+        genCameraAreaTable();
+    }
+
+
 
     return true;
 }
@@ -474,6 +481,38 @@ TexProcess::~TexProcess()
         free(m_camTable);
     if(m_fpTable)
         free(m_fpTable);
+}
+#define TX_SCALEUP    20
+#define TX_CENTER      10
+#define TZ_SCALEUP    20
+#define TZ_CENTER      10
+int TexProcess::createVertices(vector<QVector3D> & vert, vector<unsigned short>& indices)
+{
+    int i, j;
+    float diffy = 1.0f/(m_yIntv);
+    float diffx = 1.0f/(m_xIntv);
+    for (i=0; i<= m_yIntv; i++) {
+        for (j=0; j<=m_xIntv; j++) {
+            vert.push_back(QVector3D(j*diffx*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-i*diffy*TZ_SCALEUP));
+
+        }
+    }
+
+    int k;
+    for (i=0; i< m_yIntv; i++) {
+        k = i*(m_xIntv+1);
+        for(j=0; j<m_xIntv; j++) {
+            indices.push_back(k);
+            indices.push_back(k+1);
+            indices.push_back(k+m_xIntv+1);
+            indices.push_back(k+m_xIntv+1);
+            indices.push_back(k+1);
+            indices.push_back(k+m_xIntv+2);
+
+            k++;
+        }
+    }
+    return 0;
 }
 
 int TexProcess::updateUv(vector <QVector2D> &uv)
@@ -559,11 +598,15 @@ void TexProcess::genCameraAreaTable()
     }
 }
 ////////////////
-/// \brief TexProcess::saveTable save uv location to table
+/// \brief TexProcess::saveTexture save uv location to table
 /// \param path
 /// \return
 ///
-bool TexProcess::saveTable(const char* path)
+bool TexProcess::saveTexture(const char* path)
+{
+    return true;
+}
+bool TexProcess::loadTexture(const char* path)
 {
     return true;
 }

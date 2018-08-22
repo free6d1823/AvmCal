@@ -6,6 +6,7 @@
 /* exclude these lines when merge to floo.cpp of navm  */
 
 IMAGE* m_pImage = NULL;
+TexProcess  texProcess;
 bool Return_Error(const char* reason)
 {
     perror(reason);
@@ -106,40 +107,13 @@ bool Floor::initTextures()
     return true;
 }
 #define MAX_GRIDES   100
-#define TX_SCALEUP    20
-#define TX_CENTER      10
-#define TZ_SCALEUP    20
-#define TZ_CENTER      10
+
 void Floor::CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs,
                                vector<unsigned short>& indices)
 {
-    int i, j;
-    float diff = 1.0f/(MAX_GRIDES);
-    for (i=0; i<= MAX_GRIDES; i++) {
-        for (j=0; j<=MAX_GRIDES; j++) {
-            vert.push_back(QVector3D(j*diff*TX_SCALEUP-TX_CENTER, 0, TZ_CENTER-i*diff*TZ_SCALEUP));
- //           uvs.push_back(QVector2D(j*diff, i*diff));
-        }
-    }
-
-    int k;
-    for (i=0; i< MAX_GRIDES; i++) {
-        k = i*(MAX_GRIDES+1);
-        for(j=0; j<MAX_GRIDES; j++) {
-            indices.push_back(k);
-            indices.push_back(k+1);
-            indices.push_back(k+MAX_GRIDES+1);
-            indices.push_back(k+MAX_GRIDES+1);
-            indices.push_back(k+1);
-            indices.push_back(k+MAX_GRIDES+2);
-
-            k++;
-        }
-    }
-#ifdef IN_AVMCAL
-
-    ImgProcess::updateUv(uvs, MAX_GRIDES,MAX_GRIDES);
-#endif //IN_AVMCAL
+    texProcess.init(MAX_GRIDES, MAX_GRIDES);
+    texProcess.createVertices(vert, indices);
+    texProcess.updateUv(uvs);
 }
 
 void Floor::init()
@@ -147,7 +121,6 @@ void Floor::init()
     vector<QVector3D> vertices;
     vector<QVector2D> uvs;
     vector<unsigned short> indices;
-
     CreateVerticesData(vertices, uvs, indices);
     m_nDrawNum = indices.size();
     printf("%d - %d - %d\n", (int)vertices.size(), (int)uvs.size(), (int)indices.size());

@@ -48,8 +48,10 @@ public:
     TexProcess();
     ~TexProcess();
     bool init(int xIntv, int yIntv);
+    int createVertices(vector<QVector3D> & vert, vector<unsigned short>& indices);
     int updateUv(vector <QVector2D> &uv);
-    bool saveTable(const char* path);
+    bool saveTexture(const char* path);
+    bool loadTexture(const char* path);
 private:
     void genCameraAreaTable();
     AreaSettings m_as[MAX_CAMERAS];
