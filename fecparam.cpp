@@ -2,7 +2,8 @@
 #include "FecParam.h"
 
 #define PI      3.1415967
-const char  INIFILE[] = "/home/cj/settings.ini";
+char  INIFILE[256] = "settings.ini";
+const char DEFAULTINI[] ="/opt/navm/default.ini";
 
 bool    LoadFecParam(FecParam* pFecParam, int nArea)
 {
@@ -15,7 +16,7 @@ bool    LoadFecParam(FecParam* pFecParam, int nArea)
         pFecParam->ptCenter.y = 0.5;
     }
     pFecParam->fov = GetProfileDouble(section, "fov", (170.0*PI/180.0), INIFILE);
-    pFecParam->k1 = GetProfileDouble(section, "k1", 0.0, INIFILE);
+    pFecParam->k1 = GetProfileDouble(section, "k1", -8.0, INIFILE);
     pFecParam->k2 = GetProfileDouble(section, "k2", 0.0, INIFILE);
     pFecParam->a = GetProfileDouble(section, "a", 1.0, INIFILE);
     pFecParam->b = GetProfileDouble(section, "b", 1.0, INIFILE);
@@ -52,24 +53,26 @@ bool    LoadAreaSettings(AreaSettings* pParam, int nArea)
     sprintf(section, "area_%d", nArea);
     if(!GetProfileRectDouble(section, "range", &pParam->range, INIFILE)){
         fprintf(stderr, "[%s] range= not found!\n", section);
-
+        GetProfileRectDouble(section, "range", &pParam->range, DEFAULTINI);
     }
     char key[32];
     for (int i=0; i< FP_COUNTS; i++) {
         sprintf(key, "fpt_%d", i);
         if(!GetProfilePointDouble(section, key, &pParam->fpt[i], INIFILE)){
             fprintf(stderr, "%s value not found!\n", key);
+            GetProfilePointDouble(section, key, &pParam->fpt[i], DEFAULTINI);
         }
         sprintf(key, "fps_%d", i);
         if(!GetProfilePointDouble(section, key, &pParam->fps[i], INIFILE)){
             fprintf(stderr, "[%s] %s value not found!\n", section, key);
+            GetProfilePointDouble(section, key, &pParam->fps[i], DEFAULTINI);
         }
     }
-    if(!LoadFecParam(&pParam->fec, nArea))
-        return false;
+    LoadFecParam(&pParam->fec, nArea);
     for (int i=0; i< MAX_FP_AREA; i++) {
         sprintf(key, "region_%d", i);
         if(!GetProfileRectDouble(section, key, &pParam->region[i], INIFILE)){
+            GetProfileRectDouble(section, key, &pParam->region[i], DEFAULTINI);
         }
 
         LoadHomoParam(&pParam->homo[i], nArea, i);

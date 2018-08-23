@@ -338,6 +338,7 @@ void ImgProcess::calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo
     }
 
 }
+
 /////////////////////////////////////
 /// \brief s_offsetCam each camera position in video frame
 /// |-------|------|

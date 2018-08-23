@@ -37,6 +37,10 @@ public:
     /// \brief UpdateIndices reload m_indexBuf, called if region display polocy has changed
     ///
     void UpdateIndices();
+
+    bool exportTextureArray(const char* filename);
+    bool loadTextureArray(const char* filename);
+
 protected:
     void CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs, vector<unsigned short>& indices);
     void init();

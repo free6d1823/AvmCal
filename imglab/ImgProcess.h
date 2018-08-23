@@ -37,6 +37,7 @@ static void ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
     /*!<S= HT, S=source, T=target on stitched view */
 static void findHomoMatreix(dbPOINT s[4], dbPOINT t[4], double hcoef[3][3]);
 
+
 };
 
 class TexProcess

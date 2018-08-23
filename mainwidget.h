@@ -34,7 +34,9 @@ private slots:
     void onShowFecDialog();
     void onUpdateUv();
     void onRedraw();
-
+    void onOpenFile();
+    void onExportFile();
+    void onLoadFile();
 private:
     QMatrix4x4 m_matProj;
     QVector3D m_posCamera;

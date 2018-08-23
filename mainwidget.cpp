@@ -3,7 +3,9 @@
 #include <QAction>
 #include <QMenuBar>
 #include <QLayout>
+#include <QFileDialog>
 #include "floor.h"
+extern char INIFILE[256]; /*!< area setting file name */
 
 Floor* m_pFloor = NULL;
 
@@ -27,7 +29,17 @@ void MainWidget::CreateMenus()
 {
     QVBoxLayout *boxLayout = new QVBoxLayout(this);
     setLayout(boxLayout);
-    QMenuBar* menuBar = new QMenuBar();;
+    QMenuBar* menuBar = new QMenuBar();
+    QAction* openAct = new QAction(tr("&Open..."), this);
+    openAct->setStatusTip(tr("Open area settings file."));
+    connect(openAct, SIGNAL(triggered()), SLOT(onOpenFile()));
+    QAction* exportAct = new QAction(tr("&Export..."), this);
+    exportAct->setStatusTip(tr("Export vertices data to file."));
+    connect(exportAct, SIGNAL(triggered()), SLOT(onExportFile()));
+    QAction* loadAct = new QAction(tr("&Load..."), this);
+    loadAct->setStatusTip(tr("Load vertices data from a file."));
+    connect(loadAct, SIGNAL(triggered()), SLOT(onLoadFile()));
+
     QAction* newAct = new QAction(tr("&Calibrate..."), this);
     newAct->setStatusTip(tr("FEC calibrations"));
     connect(newAct, SIGNAL(triggered()), SLOT(onShowFecDialog()));
@@ -42,6 +54,10 @@ void MainWidget::CreateMenus()
 
 
     QMenu* fileMenu = menuBar->addMenu(tr("&File"));
+    fileMenu->addAction(openAct);
+    fileMenu->addAction(exportAct);
+    fileMenu->addAction(loadAct);
+    fileMenu->addSeparator();
     fileMenu->addAction(newAct);
     fileMenu->addAction(updateAct);
     fileMenu->addAction(redrawAct);
@@ -115,8 +131,8 @@ void MainWidget::initializeGL()
     // Enable back face culling
     glEnable(GL_CULL_FACE);
 
+    m_pFloor = new Floor;
 
-     m_pFloor = new Floor;
 }
 void MainWidget::resizeGL(int w, int h)
 {
@@ -130,8 +146,10 @@ void MainWidget::paintGL()
     QMatrix4x4 view;
     view.lookAt(m_posCamera, m_posCenter, m_dirCamera);
     QVector3D light = QVector3D(0,0,0);
+    if(m_pFloor) {
     m_pFloor->update(m_matProj, view, light);
     m_pFloor->draw(false);
+    }
 }
 #include "fecwin.h"
 
@@ -151,4 +169,38 @@ void MainWidget::onRedraw()
 {
     m_pFloor->UpdateIndices();
     update();
+}
+void MainWidget::onOpenFile()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+        tr("Open settings file"), "./", tr("Area settings File (*.ini)"));
+    if (!fileName.isNull()) {
+        strncpy(INIFILE, fileName.toStdString().c_str(), sizeof(INIFILE));
+        printf("Open file %s\n", fileName.toStdString().c_str());
+        if(m_pFloor)
+            delete m_pFloor;
+        m_pFloor = new Floor;
+        update();
+    }
+}
+void MainWidget::onExportFile()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+        tr("Export texture"), "/home/", tr("Texture vertic array (*.tva *.*)"));
+    if (!fileName.isNull()) {
+        if (m_pFloor){
+            m_pFloor->exportTextureArray(fileName.toStdString().c_str());
+        }
+    }
+}
+void MainWidget::onLoadFile()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+        tr("Load vertices"), "/home/", tr("Texture vertic array (*.tva *.*)"));
+    if (!fileName.isNull()) {
+        if (m_pFloor){
+            m_pFloor->loadTextureArray(fileName.toStdString().c_str());
+            update();
+        }
+    }
 }

@@ -225,3 +225,119 @@ void Floor::UpdateIndices()
     texProcess.reloadIndices(indices);
     m_indexBuf.allocate(&indices[0], indices.size() * sizeof(unsigned short));
 }
+bool Floor::exportTextureArray(const char* filename)
+{
+    FILE* fp = fopen(filename, "wt");
+    if (!fp)
+        return false;
+    bool ret = false;
+    char buffer[256];
+
+    vector<QVector3D> vertices;
+    vector<QVector2D> uvs;
+    vector<unsigned short> indices;
+    CreateVerticesData(vertices, uvs, indices);
+
+    do {
+        sprintf(buffer, "NAVM texture file\n%lu\n%lu\n%lu\n", vertices.size(),
+                uvs.size(), indices.size());
+        if(1 != fwrite(buffer, strlen(buffer), 1, fp))
+            break;
+
+        for (unsigned int i=0; i<vertices.size(); i++){
+            sprintf(buffer, "%f, %f, %f\n", vertices[i].x(),vertices[i].y(),vertices[i].z());
+            if(1 != fwrite(buffer, strlen(buffer), 1, fp))
+                break;
+
+        }
+        for (unsigned int i=0; i<uvs.size(); i++){
+            sprintf(buffer, "%f, %f\n", uvs[i].x(),uvs[i].y());
+            if(1 != fwrite(buffer, strlen(buffer), 1, fp))
+                break;
+        }
+        for (unsigned int i=0; i<indices.size(); i++){
+            sprintf(buffer, "%d\n", indices[i]);
+            if(1 != fwrite(buffer, strlen(buffer), 1, fp))
+                break;
+        }
+
+        ret = true;
+    }while (0);
+    fclose(fp);
+    vertices.clear();
+    uvs.clear();
+    indices.clear();
+    return ret;
+}
+
+bool Floor::loadTextureArray(const char* filename)
+{
+    FILE* fp = fopen(filename, "rt");
+    if (!fp)
+        return false;
+    bool ret = false;
+    char buffer[256];
+    vector<QVector3D> vertices;
+    vector<QVector2D> uvs;
+    vector<unsigned short> indices;
+    int nv=0, nu=0, ni=0;
+    do {
+        if(NULL == fgets(buffer, 256, fp))break;
+        if ( strstr(buffer, "NAVM") == NULL) {
+            fprintf(stderr, "%s is not a NAVM texture file!!\n", filename);
+            break;
+        }
+        if(NULL == fgets(buffer, 256, fp))break;
+        nv = atoi(buffer);
+        if(NULL == fgets(buffer, 256, fp))break;
+        nu = atoi(buffer);
+        if(NULL == fgets(buffer, 256, fp))break;
+        ni = atoi(buffer);
+        if(nv != nu || ni==0 || nv==0) {
+            fprintf(stderr, "%s texture file content is corrupted!!\n", filename);
+            break;
+        }
+        float x,y,z;
+        int k;
+        for (int i=0; i< nv; i++){
+            if(1 > fscanf(fp, "%f,%f,%f", &x,&y,&z))break;
+            vertices.push_back(QVector3D(x,y,z));
+        }
+        for (int i=0; i< nu; i++){
+            if(1 > fscanf(fp, "%f,%f", &x,&y))break;
+            uvs.push_back(QVector2D(x,y));
+        }
+        for (int i=0; i< ni; i++){
+            if(1 > fscanf(fp, "%d", &k))break;
+            indices.push_back(k);
+        }
+
+        ret = true;
+    }while (0);
+    fclose(fp);
+    if (ret != true){
+        vertices.clear();
+        uvs.clear();
+        indices.clear();
+    } else {
+        m_arrayTexBuf.release();
+        m_arrayTexBuf.destroy();
+        m_arrayTexBuf.create();
+        m_arrayTexBuf.bind();
+        m_arrayTexBuf.allocate(&uvs[0], uvs.size() * sizeof(QVector2D));
+
+        m_arrayVerBuf.release();
+        m_arrayVerBuf.destroy();
+        m_arrayVerBuf.create();
+        m_arrayVerBuf.bind();
+        m_arrayVerBuf.allocate(&vertices[0], vertices.size() * sizeof(QVector3D));
+
+        m_indexBuf.release();
+        m_indexBuf.destroy();
+        m_indexBuf.create();
+        m_indexBuf.bind();
+        m_indexBuf.allocate(&indices[0], indices.size() * sizeof(unsigned int));
+
+    }
+    return ret;
+}
