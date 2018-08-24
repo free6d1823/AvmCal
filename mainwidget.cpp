@@ -4,6 +4,8 @@
 #include <QMenuBar>
 #include <QLayout>
 #include <QFileDialog>
+#include <QCoreApplication>
+
 #include "floor.h"
 extern char INIFILE[256]; /*!< area setting file name */
 
@@ -40,6 +42,28 @@ void MainWidget::CreateMenus()
     loadAct->setStatusTip(tr("Load vertices data from a file."));
     connect(loadAct, SIGNAL(triggered()), SLOT(onLoadFile()));
 
+    QAction* closeAct = new QAction(tr("E&xit"), this);
+    closeAct->setStatusTip(tr("Load vertices data from a file."));
+    connect(closeAct, SIGNAL(triggered()), SLOT(close()));
+
+
+
+    QMenu* fileMenu = menuBar->addMenu(tr("&File"));
+    fileMenu->addAction(openAct);
+    fileMenu->addSeparator();
+    fileMenu->addAction(exportAct);
+    fileMenu->addAction(loadAct);
+    fileMenu->addSeparator();
+    fileMenu->addAction(closeAct);
+
+    QAction* cameraAct = new QAction(tr("&Select Camera"), this);
+    cameraAct->setStatusTip(tr("Select camera as source"));
+    connect(cameraAct, SIGNAL(triggered()), SLOT(onSelectCamera()));
+
+    QAction* sourceAct = new QAction(tr("&Select Image ..."), this);
+    sourceAct->setStatusTip(tr("Select a YUV file as source"));
+    connect(sourceAct, SIGNAL(triggered()), SLOT(onSelectImageFile()));
+
     QAction* newAct = new QAction(tr("&Calibrate..."), this);
     newAct->setStatusTip(tr("FEC calibrations"));
     connect(newAct, SIGNAL(triggered()), SLOT(onShowFecDialog()));
@@ -52,16 +76,15 @@ void MainWidget::CreateMenus()
     redrawAct->setStatusTip(tr("reload indices"));
     connect(redrawAct, SIGNAL(triggered()), SLOT(onRedraw()));
 
+    QMenu* editMenu = menuBar->addMenu(tr("&Texture"));
+    editMenu->addAction(cameraAct);
+    editMenu->addAction(sourceAct);
+    editMenu->addSeparator();
+    editMenu->addAction(newAct);
+    editMenu->addSeparator();
+    editMenu->addAction(updateAct);
+    editMenu->addAction(redrawAct);
 
-    QMenu* fileMenu = menuBar->addMenu(tr("&File"));
-    fileMenu->addAction(openAct);
-    fileMenu->addAction(exportAct);
-    fileMenu->addAction(loadAct);
-    fileMenu->addSeparator();
-    fileMenu->addAction(newAct);
-    fileMenu->addAction(updateAct);
-    fileMenu->addAction(redrawAct);
-    //layout()->setMenuBar(menuBar);
     boxLayout->addWidget(menuBar);
 }
 
@@ -148,7 +171,7 @@ void MainWidget::paintGL()
     QVector3D light = QVector3D(0,0,0);
     if(m_pFloor) {
     m_pFloor->update(m_matProj, view, light);
-    m_pFloor->draw(false);
+    m_pFloor->draw(true);
     }
 }
 #include "fecwin.h"
@@ -173,20 +196,21 @@ void MainWidget::onRedraw()
 void MainWidget::onOpenFile()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
-        tr("Open settings file"), "./", tr("Area settings File (*.ini)"));
+        tr("Open settings file"), QCoreApplication::applicationDirPath(), tr("Area settings File (*.ini)"));
     if (!fileName.isNull()) {
         strncpy(INIFILE, fileName.toStdString().c_str(), sizeof(INIFILE));
         printf("Open file %s\n", fileName.toStdString().c_str());
-        if(m_pFloor)
-            delete m_pFloor;
-        m_pFloor = new Floor;
+        if(m_pFloor){
+            m_pFloor->UpdateTexture();
+        }
+
         update();
     }
 }
 void MainWidget::onExportFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
-        tr("Export texture"), "/home/", tr("Texture vertic array (*.tva *.*)"));
+        tr("Export texture"), QCoreApplication::applicationDirPath(), tr("Texture vertic array (*.tva *.*)"));
     if (!fileName.isNull()) {
         if (m_pFloor){
             m_pFloor->exportTextureArray(fileName.toStdString().c_str());
@@ -196,11 +220,25 @@ void MainWidget::onExportFile()
 void MainWidget::onLoadFile()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
-        tr("Load vertices"), "/home/", tr("Texture vertic array (*.tva *.*)"));
+        tr("Load vertices"), QCoreApplication::applicationDirPath(), tr("Texture vertic array (*.tva *.*)"));
     if (!fileName.isNull()) {
         if (m_pFloor){
             m_pFloor->loadTextureArray(fileName.toStdString().c_str());
             update();
         }
     }
+}
+void MainWidget::onSelectCamera()
+{
+    m_pFloor->selectSource(NULL);
+    update();
+}
+void MainWidget::onSelectImageFile()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+        tr("Select texture file"), QCoreApplication::applicationDirPath(), tr("yuyv (*.yuv)"));
+    if (fileName.isNull())
+        return;
+    m_pFloor->selectSource(fileName.toLocal8Bit().data());
+    update();
 }

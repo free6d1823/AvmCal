@@ -1,9 +1,10 @@
 #include "./inifile/inifile.h"
+#include <QCoreApplication>
 #include "FecParam.h"
 
 #define PI      3.1415967
-char  INIFILE[256] = "settings.ini";
-const char DEFAULTINI[] ="/opt/navm/default.ini";
+char  INIFILE[256] = {0};
+const char DEFAULTINI[] ="/default.ini";
 
 bool    LoadFecParam(FecParam* pFecParam, int nArea)
 {
@@ -49,30 +50,32 @@ bool    LoadHomoParam(HomoParam* pParam, int nArea, int nFp)
 }
 bool    LoadAreaSettings(AreaSettings* pParam, int nArea)
 {
+    if (INIFILE[0] == 0){
+        QString path = QCoreApplication::applicationDirPath();
+        path = path.append(DEFAULTINI);
+        strncpy(INIFILE, path.toLocal8Bit().data(), sizeof(INIFILE));
+    }
     char section[32];
     sprintf(section, "area_%d", nArea);
     if(!GetProfileRectDouble(section, "range", &pParam->range, INIFILE)){
         fprintf(stderr, "[%s] range= not found!\n", section);
-        GetProfileRectDouble(section, "range", &pParam->range, DEFAULTINI);
     }
     char key[32];
     for (int i=0; i< FP_COUNTS; i++) {
         sprintf(key, "fpt_%d", i);
         if(!GetProfilePointDouble(section, key, &pParam->fpt[i], INIFILE)){
             fprintf(stderr, "%s value not found!\n", key);
-            GetProfilePointDouble(section, key, &pParam->fpt[i], DEFAULTINI);
         }
         sprintf(key, "fps_%d", i);
         if(!GetProfilePointDouble(section, key, &pParam->fps[i], INIFILE)){
             fprintf(stderr, "[%s] %s value not found!\n", section, key);
-            GetProfilePointDouble(section, key, &pParam->fps[i], DEFAULTINI);
         }
     }
     LoadFecParam(&pParam->fec, nArea);
     for (int i=0; i< MAX_FP_AREA; i++) {
         sprintf(key, "region_%d", i);
         if(!GetProfileRectDouble(section, key, &pParam->region[i], INIFILE)){
-            GetProfileRectDouble(section, key, &pParam->region[i], DEFAULTINI);
+
         }
 
         LoadHomoParam(&pParam->homo[i], nArea, i);

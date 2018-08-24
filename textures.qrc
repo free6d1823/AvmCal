@@ -1,5 +1,3 @@
 <RCC>
-    <qresource prefix="/">
-        <file>camera1800x1440.yuv</file>
-    </qresource>
+    <qresource prefix="/"/>
 </RCC>

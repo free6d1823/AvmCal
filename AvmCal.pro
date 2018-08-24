@@ -34,7 +34,10 @@ SOURCES += main.cpp\
     homoview.cpp \
     fectooldlg.cpp \
     imglab/Mat.cpp \
-    imglab/ImgProcess.cpp
+    imglab/ImgProcess.cpp \
+    videosource.cpp \
+    camerasource.cpp \
+    CameraManager.cpp
 
 HEADERS  += mainwidget.h \
     floor.h \
@@ -47,7 +50,9 @@ HEADERS  += mainwidget.h \
     homoview.h \
     fectooldlg.h \
     imglab/Mat.h \
-    imglab/ImgProcess.h
+    imglab/ImgProcess.h \
+    videosource.h \
+    CameraManager.h
 
 DISTFILES +=
 

@@ -2,16 +2,12 @@
 #include "Mat.h"
 #include <QFile>
 #include <QVector3D>
+#include <QCoreApplication>
+
 
 #define PI_2    (3.1415967*2.0)
-#define IMAGE_PATH  ":/camera1800x1440.yuv"
-#define IMAGE_WIDTH 1800
-#define IMAGE_HEIGHT    1440
-#define IMAGE_AREA_WIDTH    900
-#define IMAGE_AREA_HEIGHT   720
 
-void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst);
-
+#define DEFAULT_IMAGE_NAME  "/camera_1800x1440.yuv"
 
 ImgProcess::ImgProcess()
 {
@@ -116,6 +112,12 @@ IMAGE* ImgProcess::refImage(unsigned char* data, int w, int h)
     printf ("ImgProcess::initImage#%d (%dx%d)\n", img->seq, w, h);
     return img;
 }
+void ImgProcess::updateImageData(IMAGE* pImg, unsigned char* data, int w, int h)
+{
+    if(pImg->width != w || pImg->height != h)
+        return;
+    pImg->buffer = data;
+}
 
 void ImgProcess::freeImage(IMAGE* pImage)
 {
@@ -127,56 +129,6 @@ printf("ImgProcess::freeImage,#%d - %dx%d\n", pImage->seq, pImage->width,
     }
 }
 
-IMAGE* ImgProcess::loadImage()
-{
-    QFile fp(IMAGE_PATH);
-    if(!fp.open(QIODevice::ReadOnly))
-            return NULL;
-
-    IMAGE* pImg = initImage(IMAGE_WIDTH, IMAGE_HEIGHT);
-    if (!pImg){
-       fp.close();
-       return pImg;
-    }
-    do {
-        unsigned char* pSrc = (unsigned char*) malloc(IMAGE_WIDTH*2*IMAGE_HEIGHT);
-        if (!pSrc)
-            break;
-        fp.read((char* )pSrc, IMAGE_WIDTH*2*IMAGE_HEIGHT);
-        YuyvToRgb32(pSrc, IMAGE_WIDTH, IMAGE_WIDTH*2, IMAGE_HEIGHT, pImg->buffer, true);
-        free(pSrc);
-    }while(0);
-   fp.close();
-   return pImg;
-}
-IMAGE* ImgProcess::loadImageArea(int idArea, FecParam* pFec)
-{
-    IMAGE* pSrc = loadImage();
-    if (!pSrc)
-        return NULL;
-    IMAGE* pOut = initImage(IMAGE_AREA_WIDTH, IMAGE_AREA_HEIGHT);
-    unsigned char* pIn;
-    switch (idArea) {
-    case 0:
-        pIn = pSrc->buffer;
-        break;
-    case 1:
-        pIn = pSrc->buffer+ IMAGE_AREA_WIDTH*4;
-        break;
-    case 2:
-        pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT;
-        break;
-    case 3:
-    default:
-        pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT+ IMAGE_AREA_WIDTH*4;
-        break;
-    }
-
-    ApplyFec(pIn, pOut->width, pSrc->stride, pOut->height,
-             pOut->buffer, pOut->stride, pFec);
-    ImgProcess::freeImage(pSrc);
-    return pOut;
-}
 void ImgProcess::ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
                         unsigned char* pTar, int outStride, FecParam* pFec)
 {
@@ -337,6 +289,99 @@ void ImgProcess::calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo
         ImgProcess::findHomoMatreix(s[i],t[i], homo[i].h);
     }
 
+}
+#define DEFAULT_WIDTH   1800
+#define DEFAULT_HEIGHT 900
+ImgSource::ImgSource()
+{
+    IMAGE_WIDTH =DEFAULT_WIDTH;
+    IMAGE_HEIGHT =   DEFAULT_HEIGHT;
+    IMAGE_AREA_WIDTH =   DEFAULT_WIDTH/2;
+    IMAGE_AREA_HEIGHT =  DEFAULT_HEIGHT/2;
+    m_pRgb32 = NULL;
+}
+ImgSource::~ImgSource()
+{
+    if(m_pRgb32) free(m_pRgb32);
+}
+
+bool ImgSource::setImageFileName(const char* file, int width, int height)
+{
+    QFile fp(file);
+    if(!fp.open(QIODevice::ReadOnly))
+            return false;
+    if(m_pRgb32)
+        free(m_pRgb32);
+    IMAGE_WIDTH = width;
+    IMAGE_HEIGHT = height;
+    IMAGE_AREA_WIDTH =   width/2;
+    IMAGE_AREA_HEIGHT =  height/2;
+    m_pRgb32 = (unsigned char*) malloc(IMAGE_WIDTH*4*IMAGE_HEIGHT);
+    if (!m_pRgb32) return false;
+    void* pYuv = malloc(IMAGE_WIDTH*2*IMAGE_HEIGHT);
+    if (!pYuv) {
+        free(m_pRgb32); return false;
+    }
+    fp.read((char* )pYuv, IMAGE_WIDTH*2*IMAGE_HEIGHT);
+    fp.close();
+    ImgProcess::YuyvToRgb32((unsigned char*)pYuv, IMAGE_WIDTH, IMAGE_WIDTH*2, IMAGE_HEIGHT,
+                            m_pRgb32, true);
+    free(pYuv);
+    return true;
+}
+bool ImgSource::setImageFromRgb32(void* data, int width, int height)
+{
+    if(m_pRgb32)
+        free(m_pRgb32);
+    m_pRgb32 = (unsigned char*) malloc(width*4*height);
+    if (!m_pRgb32) return false;
+
+    IMAGE_WIDTH = width;
+    IMAGE_HEIGHT = height;
+    IMAGE_AREA_WIDTH =   width/2;
+    IMAGE_AREA_HEIGHT =  height/2;
+    memcpy(m_pRgb32, data, width*4*height);
+    return true;
+}
+IMAGE* ImgSource::loadImage()
+{
+    if (m_pRgb32 == NULL){
+        QString path = QCoreApplication::applicationDirPath();
+        path.append(DEFAULT_IMAGE_NAME);
+        if (!setImageFileName(path.toLocal8Bit().data(), DEFAULT_WIDTH,
+                         DEFAULT_HEIGHT))
+            return NULL;
+    }
+
+    return ImgProcess::refImage(m_pRgb32, IMAGE_WIDTH, IMAGE_HEIGHT);
+}
+IMAGE* ImgSource::loadImageArea(int idArea, FecParam* pFec)
+{
+    IMAGE* pSrc = loadImage();
+    if (!pSrc)
+        return NULL;
+    IMAGE* pOut = ImgProcess::initImage(IMAGE_AREA_WIDTH, IMAGE_AREA_HEIGHT);
+    unsigned char* pIn;
+    switch (idArea) {
+    case 0:
+        pIn = pSrc->buffer;
+        break;
+    case 1:
+        pIn = pSrc->buffer+ IMAGE_AREA_WIDTH*4;
+        break;
+    case 2:
+        pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT;
+        break;
+    case 3:
+    default:
+        pIn = pSrc->buffer + IMAGE_WIDTH*4*IMAGE_AREA_HEIGHT+ IMAGE_AREA_WIDTH*4;
+        break;
+    }
+
+    ImgProcess::ApplyFec(pIn, pOut->width, pSrc->stride, pOut->height,
+             pOut->buffer, pOut->stride, pFec);
+    ImgProcess::freeImage(pSrc);
+    return pOut;
 }
 
 /////////////////////////////////////

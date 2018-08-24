@@ -38,8 +38,18 @@ public:
     ///
     void UpdateIndices();
 
+    ////
+    /// \brief UpdateTexture update ver, tex, indice buffers
+    ///
+    void UpdateTexture();
+
     bool exportTextureArray(const char* filename);
     bool loadTextureArray(const char* filename);
+    /////
+    /// \brief selectSource select texture source
+    /// \param filename if filename is null, source from camera, else, from a YUV file
+    ///
+    void selectSource(const char* filename);
 
 protected:
     void CreateVerticesData(vector<QVector3D> & vert, vector<QVector2D>& uvs, vector<unsigned short>& indices);
@@ -48,6 +58,7 @@ protected:
     bool initTextures();
 
 private:
+    bool m_bSourceCamera; /*!< true if from camera, false from file */
     int m_nDrawNum;
     QOpenGLBuffer m_arrayVerBuf;
     QOpenGLBuffer m_arrayTexBuf;

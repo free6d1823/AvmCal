@@ -9,7 +9,8 @@
 #define RADIAN_TO_DEGREE(r) (r*180.0/PI)
 #define DEGREE_TO_RADIAN(d) (d*PI/180.0)
 
-ImgProcess gImgEngine;
+//ImgProcess gImgEngine;
+extern ImgSource imgSource;
 FecWin* gFecWin = NULL;
 FecWin::FecWin(QWidget *parent) :
     QDialog(parent),
@@ -83,7 +84,7 @@ void FecWin::SaveFeaturePoints()
 
 bool FecWin::LoadImage(int nID)
 {
-    IMAGE* pImg = ImgProcess::loadImageArea(nID, m_pFecParam);
+    IMAGE* pImg = imgSource.loadImageArea(nID, m_pFecParam);
     if (!pImg)
         return false;
     m_pImgView->setImage(pImg);
@@ -101,7 +102,7 @@ void FecWin::ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
         v = (double)i/(double)height;
         for (int j=0; j<width; j++) {
             u = (double)j/(double)width;
-            gImgEngine.doFec(u,v,x,y, m_pFecParam);
+            ImgProcess::doFec(u,v,x,y, m_pFecParam);
 
             if ( x>=0 && x<1 && y>=0 && y< 1){
                 nX = (int) (x * (double) width+0.5);
@@ -130,6 +131,7 @@ FecWin::~FecWin()
 }
 void FecWin::closeEvent(QCloseEvent *event)
 {
+    (void) event;
     if(m_pHomoWin){
         m_pHomoWin->close();
     }

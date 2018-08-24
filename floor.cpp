@@ -1,12 +1,15 @@
 #include "floor.h"
+#include "videosource.h"
 #include <QFile>
-/* exclude these lines when merge to floo.cpp of navm  */
-#define IN_AVMCAL
-#include "./imglab/ImgProcess.h"
-/* exclude these lines when merge to floo.cpp of navm  */
 
-IMAGE* m_pImage = NULL;
+#include "./imglab/ImgProcess.h"
+
+
+CameraSource* m_pVs = NULL;
+ IMAGE* m_pImage = NULL;
 TexProcess  texProcess;
+ImgSource   imgSource;
+
 bool Return_Error(const char* reason)
 {
     perror(reason);
@@ -23,7 +26,83 @@ Floor::Floor()
     m_indexBuf.create();
     m_nDrawNum = 0;
 
+    m_pVs = new CameraSource();
+
     init();
+}
+/////
+/// \brief selectSource select texture source
+/// \param filename if filename is null, source from camera, else, from a YUV file
+///  filename must be of the format xxx_#width#x#heigh#.yuv
+void Floor::selectSource(const char* filename)
+{
+    if (filename == NULL){
+        m_bSourceCamera = true;
+
+        imgSource.setImageFromRgb32(m_pVs->GetFrameData(), m_pVs->Width(),m_pVs->Height());
+    }else {
+        m_bSourceCamera = false;
+        char value[32];
+        const char* p1 = strchr(filename, '_');
+        const char* p2 = strchr(filename, '.');
+        int length = p2-p1-1;
+        if (p1 == NULL || p2 == NULL || length <3 || length>= (int) sizeof(value)-1)
+            return;
+        memcpy(value, p1+1, length);
+        value[length] = 0;
+        p1 = strchr(value, 'x');
+        if (!p1)
+            return;
+        *(char*) p1 = 0;
+
+        int width = atoi(value);
+        int height = atoi(p1+1);
+        imgSource.setImageFileName(filename, width, height);
+    }
+    UpdateTexture();
+
+}
+////
+/// \brief UpdateTexture update ver, tex, indice buffers
+///
+void Floor::UpdateTexture()
+{
+    if (m_pImage)
+        ImgProcess::freeImage(m_pImage);
+    if(m_bSourceCamera)
+        m_pImage = ImgProcess::refImage(m_pVs->GetFrameData(),m_pVs->Width(),m_pVs->Height());
+    else
+        m_pImage = imgSource.loadImage();
+    m_texture->destroy();
+    m_texture->create();
+
+    m_texture->setData(QImage(m_pImage->buffer,
+            m_pImage->width, m_pImage->height, QImage::Format_RGBA8888).mirrored() );
+
+    vector<QVector3D> vertices;
+    vector<QVector2D> uvs;
+    vector<unsigned short> indices;
+    CreateVerticesData(vertices, uvs, indices);
+    m_nDrawNum = indices.size();
+
+    m_arrayVerBuf.release();
+    m_arrayVerBuf.destroy();
+    m_arrayVerBuf.create();
+    m_arrayVerBuf.bind();
+    m_arrayVerBuf.allocate(&vertices[0], vertices.size() * sizeof(QVector3D));
+
+    m_arrayTexBuf.release();
+    m_arrayTexBuf.destroy();
+    m_arrayTexBuf.create();
+    m_arrayTexBuf.bind();
+    m_arrayTexBuf.allocate(&uvs[0], uvs.size() * sizeof(QVector2D));
+
+    m_indexBuf.release();
+    m_indexBuf.destroy();
+    m_indexBuf.create();
+    m_indexBuf.bind();
+    m_indexBuf.allocate(&indices[0], indices.size() * sizeof(unsigned short));
+
 }
 
 Floor::~Floor()
@@ -73,26 +152,17 @@ bool Floor::initShaders()
 
 bool Floor::initTextures()
 {
-
-#ifdef IN_AVMCAL
-    if (!m_pImage) {
-        m_pImage = ImgProcess::initImage(1800,1440);
-            QFile fp(":/camera1800x1440.yuv");
-            if(!fp.open(QIODevice::ReadOnly))
-                    return false;
-
-            char* pSrc = (char*) malloc(m_pImage->width*2*m_pImage->height);
-            fp.read(pSrc, m_pImage->width*2*m_pImage->height);
-            fp.close();
-            ImgProcess::YuyvToRgb32((unsigned char*) pSrc, m_pImage->width,
-                                    m_pImage->width*2, m_pImage->height, m_pImage->buffer, true);
-            free(pSrc);
+    if (m_pImage)
+        ImgProcess::freeImage(m_pImage);
+    if(!m_bSourceCamera){
+        m_pImage = imgSource.loadImage();
+    } else {
+        m_pImage = ImgProcess::refImage(m_pVs->GetFrameData(),m_pVs->Width(),m_pVs->Height());
     }
-#else
-    m_pImage = ImgProcess::refImage(m_pVs->GetFrameData(),m_pVs->Width(),m_pVs->Height());
-#endif
+    if(m_texture)
+        delete m_texture;
     m_texture = new QOpenGLTexture(QImage(m_pImage->buffer,
-            m_pImage->width, m_pImage->height, QImage::Format_RGBA8888) );
+            m_pImage->width, m_pImage->height, QImage::Format_RGBA8888)  );
 
     // Set nearest filtering mode for texture minification
     m_texture->setMinificationFilter(QOpenGLTexture::Nearest);
@@ -155,14 +225,20 @@ void Floor::update(QMatrix4x4& pojection, QMatrix4x4& view, QVector3D& light)
 void Floor::draw(bool bReload )
 {
     if (bReload) {
-#ifdef IN_AVMCAL
-#else
-        unsigned char * pData = m_pVs->GetFrameData();
+
+        if(m_bSourceCamera){
+           ImgProcess::updateImageData(m_pImage,
+                 m_pVs->GetFrameData(),m_pVs->Width(),m_pVs->Height());
+        }
+        else {
+        //    m_pImage = imgSource.loadImage();
+        }
         m_texture->destroy();
         m_texture->create();
-        m_texture->setData(QImage(pData, m_pVs->Width(),
-        m_pVs->Height(), QImage::Format_RGBA8888).mirrored());
-#endif
+
+        m_texture->setData(QImage(m_pImage->buffer,
+                m_pImage->width, m_pImage->height, QImage::Format_RGBA8888) );
+
     }
     m_program.bind();
 

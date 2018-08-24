@@ -5,6 +5,7 @@
 #include <QVector2D>
 using namespace std;
 
+
 typedef struct _IMAGE{
     int seq;
     unsigned char* buffer;
@@ -20,6 +21,7 @@ class ImgProcess
 public:
     ImgProcess();
     ~ImgProcess();
+static void updateImageData(IMAGE* pImg, unsigned char* data, int w, int h);
 static void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst);
 static    void doFec(double u, double v, double &x, double &y, FecParam* m_pFec);
 static void calculateHomoMatrix(dbPOINT* fps, dbPOINT* fpt, HomoParam* homo);
@@ -29,14 +31,29 @@ static    bool doHomoTransform(
 static IMAGE* initImage(int w, int h);
 static IMAGE* refImage(unsigned char* data, int w, int h);
 static void freeImage(IMAGE* pImage);
-static IMAGE* loadImage();
-static IMAGE* loadImageArea(int idArea, FecParam* pFec);
 static void ApplyFec(unsigned char* pSrc, int width, int inStride,  int height,
                         unsigned char* pTar, int outStride, FecParam* pFec);
 
     /*!<S= HT, S=source, T=target on stitched view */
 static void findHomoMatreix(dbPOINT s[4], dbPOINT t[4], double hcoef[3][3]);
 
+
+};
+class ImgSource
+{
+public:
+    ImgSource();
+    ~ImgSource();
+    bool setImageFileName(const char* file, int width, int height);
+    bool setImageFromRgb32(void* data, int width, int height);
+    IMAGE* loadImage();
+    IMAGE* loadImageArea(int idArea, FecParam* pFec);
+private:
+    unsigned char* m_pRgb32;
+    int  IMAGE_WIDTH;
+    int  IMAGE_HEIGHT;
+    int  IMAGE_AREA_WIDTH;
+    int  IMAGE_AREA_HEIGHT;
 
 };
 

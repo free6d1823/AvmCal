@@ -6,7 +6,7 @@
 #define OUT_WIDTH   1000
 #define OUT_HEIGHT  1000
 #define OUT_STRIDE  (1000*4)
-
+extern ImgSource imgSource;
 HomoView::HomoView(HomoWin *parent) : QWidget((QWidget*)parent)
 {
     m_pOwner = parent;
@@ -77,7 +77,7 @@ void HomoView::setImage(IMAGE* pImg, int nAreaID)
 void HomoView::drawAl()
 {
     //load whole image
-    IMAGE* pIn = ImgProcess::loadImage();
+    IMAGE* pIn = imgSource.loadImage();
     QPoint offset[4]={QPoint(0,0), QPoint(pIn->width/2, 0),
             QPoint(0, pIn->height/2), QPoint(pIn->width/2, pIn->height/2)};
 

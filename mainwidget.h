@@ -37,6 +37,8 @@ private slots:
     void onOpenFile();
     void onExportFile();
     void onLoadFile();
+    void onSelectCamera();
+    void onSelectImageFile();
 private:
     QMatrix4x4 m_matProj;
     QVector3D m_posCamera;
